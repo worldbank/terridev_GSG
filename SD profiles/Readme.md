@@ -1,4 +1,4 @@
-# SD Profiles
+# SD Benchmark
 
 ## Prerequisites
 The following packages have to be installed before running the code:
