@@ -1,5 +1,10 @@
 # SD Profiles
 
+## Prerequisites
+The following packages have to be installed before running the code:
+WDI, plyr, dplyr, rvest, readxl, tidyverse, data.table, ggplot2
+
+
 ## Step 1 - SD datasets
 
 This code calls and gathers all the indicators necessary for the profiles and gathers them in different datasets for each income group with different files for inicator estimates, ranks and scores (necessary for the graphs).
@@ -10,6 +15,7 @@ However, 4 indicators could not be directly integrated (as they have to be extra
   - wind_agg from the Global Wind Atlas
   - Market access from Weiss et al. 2015
   - Biodiversity from the Terrestrial Biodiversity Indicators
+
 
 ## Step 2 - Country outputs
 
