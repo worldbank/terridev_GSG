@@ -18,7 +18,7 @@ Second Step: The Lagginess Index code gathers the data from three different sour
 
 Then, it calculates the lagginess index by standardizing each variable and combining it in a single index going from 0 to 100. The areas with an index value on the top 40% percentile are then classified as Lagginess Areas.The results for each dimension and the lagginess index scores are exported to maps. Finally, several statistics are computed, representing the share of specific assets/dimensions located in disadvantaged areas, previously calculated (i.e., natural resources, population, and disaster risk).
 
-# Additional codes:
+## Additional codes:
 
  - Map of risk distribution: Build a map of risk distribution
  - Biodiversity calculation: estimation of the share of biodiversity (>450 species) at the subnational level.
