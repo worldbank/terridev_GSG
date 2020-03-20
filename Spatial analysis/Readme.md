@@ -22,7 +22,7 @@ Then, it calculates the lagginess index by standardizing each variable and combi
 
 ## Additional codes:
 
- - Map of risk distribution: Build a map of risk distribution
+ - Map of risk distribution: Build a map of risk 
  - Biodiversity calculation: estimation of the share of biodiversity (>450 species) at the subnational level.
 
 
