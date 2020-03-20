@@ -8,9 +8,11 @@ BAMMtools, BBmisc, classInt, cowplot, data.table, doBy, foreign, ggplot2, mappro
 This code produces a lagginess index which classifies regions within countries from 0 to 100, 0 being the least disadvantaged area and 100 the most disadvantaged area. This classification is based on the combination of three dimensions: poverty, economic activity and accessibility.
 
 ## Workflow
-First step:The first code estimates accessibility at a subnational level based on a gravity model to calculate access to cities (5km grid). Raster files with accessibility values are available for all countries in Latin America.
+**First step**
+The code estimates accessibility at a subnational level based on a gravity model to calculate access to cities (5km grid). Raster files with accessibility values are available for all countries in Latin America.
 
-Second Step: The Lagginess Index code gathers the data from three different sources:
+**Second Step**
+The Lagginess Index code gathers the data from three different sources:
  - Poverty: HDD database
  - Economic activity: Nightlight activity (VIIRS, 2016), 
  - Accessibility: Author's calculation based on a gravity model to calculate access to cities (5km grid)(estimated in the 
