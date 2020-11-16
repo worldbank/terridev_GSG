@@ -461,7 +461,7 @@ scores_reg_inv <- function(data, y){
 ```
 
 #Calculate Percentile Rank
-Calcultaes country percentile value comparing all countries in the dataset
+Calculates country percentile value comparing all countries in the dataset
 ```{r}
 #inverse per ranking function
 per_inv <- function(x) {
@@ -542,9 +542,8 @@ integrated_MENA_score <- integrated_MENA_score %>% filter(region=='Middle East &
 write.csv(integrated_MENA_score, paste0(dir_int, "DB_SD_MENA_score.csv"), row.names = FALSE)
 ```
 
-#From this point the selection of indicators, will produce different results
-
-Two version of the benchmarking are generated with the following code:
+#From this point the selection of indicators will produce different results
+#Two version of the benchmarking are generated with the following code:
 ##v0 
 Refers to a set of indicators selected and vetted by the Chief Economist Office -Sustainable Development (work lead by Jason Daniel Russ)
 ##v1
