@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
+knitr::opts_knit$set(root.dir = "C:/User/####/OneDrive/")
 ```
 
 #Required libraries
