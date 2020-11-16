@@ -6,8 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/Users/eves/Dropbox/MENA/")
-#knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
+knitr::opts_knit$set(root.dir = "C:/User/####/OneDrive/")
 ```
 
 ```{r}
@@ -23,16 +22,14 @@ library(Hmisc)
 #detach(package:plyr) ---- DETACH OR SOME FORMULAS WONT WORK
 ```
 
-#Set Directories
+# Set Directories
 ```{r}
-dir_int<- "./Data/Benchmarking/SD_Profiles/Integrated data/"     #Folder with data generated in code Benchmarking_Data_V3
-#dir_int<-"./My Files/Integrated data/"
-dir_out<- "./Data/Benchmarking/SD_Profiles/Output/"              
-#dir_out<-"./My Files/Output/"
-#In your coumputer, this directory create  separate folders for income group - ex: ./My Files/Output/lmic -./My Files/Output/umic, etc, in oder to save countries info per income group
+dir_int<-"./My Files/Integrated data/"  #Folder with data generated in code Benchmarking_Data_V3        
+dir_out<-"./My Files/Output/"
+#In your coumputer, in this directory create separate folders for income group - ex: ./My Files/Output/lmic -./My Files/Output/umic, etc, in oder to save countries info per income group
 getwd()
 ```
-#Dataset creation
+# Create list of countries per income group
 ```{r}
 # Load country dataset to create list of countries used in the loop
 
@@ -60,14 +57,12 @@ lmics <- as.character(lmics)
 
 ```
 
-#Set comparators -INCOME GROUP and REGIONAL GROUP and VERSION
+# Set comparators -INCOME GROUP and REGIONAL GROUP and VERSION
 ```{r}
 #Income group (select same category)
 #country <- lmics ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
 group <- 'lmics' ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
-country=c("EGY", "MAR", "TUN")
-#i="EGY"
-#country=c("EGY")
+
 #Set files names to read according to comparison groups
 comparison_percentile <- paste0('DB_SD_',group,'_score')
 comparison_score <- paste0('DB_SD_',group,'_score')
@@ -154,7 +149,7 @@ colnames(country_all)<-str_replace(colnames(country_all), "water_efficiency_ceo"
 
 ```
 
-#Get the aggregate values of median/sd for each income group (to use in the table comparison)
+# Get the aggregate values of median/sd for each income group (to use in the table comparison)
 ```{r}
 options(scipen=999) #remove scientific notation
 
@@ -185,7 +180,6 @@ country_all$region_red <- ifelse(country_all$region == "South Asia", "SSA",
 country_all$`*Pop. affected by disasters %`<-as.numeric(as.character(country_all$`*Pop. affected by disasters %`))
 
 
-
 # MEDIAN
 income_median <- country_all%>%  group_by(income_red)%>%
   select(-matches('_per'))%>% dplyr::summarise(across(where(is.numeric), list(median= ~median(., na.rm = T)), .names = "{col}"))
@@ -213,7 +207,7 @@ income_info$sd_median_up<-income_info$median + income_info$sd
 income_info$sd_median_down<-income_info$median - income_info$sd
 ```
 
-#Prepare data for PERCENTILE RANKING BAR GRAPH
+# Prepare data for PERCENTILE RANKING BAR GRAPH
 ```{r}
 #Duplicate a version of country_all for transformation- country_all needs to remain the same to be use in the percentil rank graph
 country_all2<-country_all
@@ -244,9 +238,9 @@ median_income_long <- reshape2::melt(median_income,
 country_long_complete<-left_join(country_long_complete, median_income_long, by=c("pilar", "income_red"))
 ```
 
-#From this point the selection between version 1 or 0 will affect the outcomes 
+# From this point the selection between version 1 or 0 will affect the outcomes 
 
-#Function for PERCENTILE RANKING BAR GRAPH - Select regional_group in advance 
+# Function for PERCENTILE RANKING BAR GRAPH
 ```{r}
 for(i in country){
   #Duplicate  a version of country long for subsetting 
@@ -390,7 +384,7 @@ ggsave(graph2, file=paste0(dir_out, group,'/',i,"_barplot_per_group_v0.png"), wi
 ```
 
 
-#Loop to prepare data for SCORE PILARS COMPARISON GRAPH - CIRCULAR (PER PILARS)
+# Loop to prepare data for SCORE PILARS COMPARISON GRAPH - CIRCULAR (PER PILARS)
 ```{r}
 ### COUNTRY Percentile DATASET ###
 
@@ -550,7 +544,7 @@ write.csv(country_score, paste0(dir_out, group,'/',i,"_score_graphs.csv"), row.n
 }
 ```
 
-#Loop to GET MEDIAN/MEAN and SD values per country for PPT TABLE for the income and aspirational income group
+# Loop to GET MEDIAN/MEAN and SD values per country for PPT TABLE for the income and aspirational income group
 ```{r}
 for(i in country){
 
@@ -610,7 +604,7 @@ write.csv(income_info_country,paste0(dir_out, group,'/',i,"_tables_data.csv"), r
 }
 ```
 
-#Loop to prepare data for PERCENTIL RANKING GRAPH - CIRCULAR (ALL PILARS- Global data)
+# Loop to prepare data for PERCENTIL RANKING GRAPH - CIRCULAR (ALL PILARS- Global data)
 ```{r}
 
 for(i in country){
@@ -689,7 +683,7 @@ ggsave(com, file=paste0(dir_out, group,'/',i,"_percentil_global_v0.png"), width=
   }
 } 
 ```
-#Graphs per pilars (RISE) - SUSTAINABILITY
+# Graphs per pilars (RISE) - SUSTAINABILITY
 ```{r}
     ##########
   # Sustainability#    #Different set of indicators for V0 AND V1
@@ -948,7 +942,7 @@ ggsave(inc, file=paste0(dir_out, group,'/',i,"_score_graph_incl_v0.png"), width=
 }
 ```
 
-#Graphs per pilars (RISE) - Efficiency
+# Graphs per pilars (RISE) - Efficiency
 ```{r}
     ##########
 # 2. Efficiency  # Same set of indicators for V0 and V1 (still using version control in case it indicators change)
@@ -1077,7 +1071,7 @@ ggsave(e, file=paste0(dir_out, group,'/',i,"_score_graph_eff_v0.png"), width=10,
   }
 }
 ```
-#Graphs per pilars (RISE) - Resilience
+# Graphs per pilars (RISE) - Resilience
 ```{r}
     ##########
 #   RESILIENCE #    # Same set of indicators for V0 and V1 (still using version control in case it indicators change)
