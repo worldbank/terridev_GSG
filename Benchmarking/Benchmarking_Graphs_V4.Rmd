@@ -60,7 +60,7 @@ lmics <- as.character(lmics)
 # Set comparators -INCOME GROUP and REGIONAL GROUP and VERSION
 ```{r}
 #Income group (select same category)
-#country <- lmics ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
+country <- lmics ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
 group <- 'lmics' ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
 
 #Set files names to read according to comparison groups
