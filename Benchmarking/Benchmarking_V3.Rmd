@@ -6,8 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/Users/eves/Dropbox/MENA/")
-#knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
+knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
 ```
 
 #Required libraries
@@ -28,8 +27,8 @@ Create the following set of folders
  dir_int = This folder is the outcome folder for the global results, name it as "Integrated data" to be consistent with the mapping script "Benchmarking_Graphs"
  
 ```{r}
-dir_raw<-"./Data/Benchmarking/SD_Profiles/Raw indicators/" #"./My Files/1.RISE/"
-dir_int<- "./Data/Benchmarking/SD_Profiles/Integrated data/" #"./My Files/Integrated data/"
+dir_raw<-"./My Files/1.RISE/"
+dir_int<- "./My Files/Integrated data/"
 getwd()
 ```
 
