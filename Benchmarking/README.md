@@ -12,6 +12,9 @@ The vast majority of indicators are downloaded from open libraries (WDI) or thro
 However, some indicators could not be directly integrated. As they are the result were part of calculations from the Chief Economist Office (Sustainable Development.
 These files are store in the folder "Raw indicators", used as inputs in the code were uploaded to the "Raw indicators" folder.
 
+The complete set of variables, code names and relation with each pillar and version, can be found in the file "Benchmarking Variables_V1205".
+
+
 ## Step 2 - Country outputs
 This code is divided in two parts.
 
