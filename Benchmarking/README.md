@@ -6,7 +6,7 @@
 This code calls and gathers all the indicators necessary for the benchmarking profiles and gathers them in different datasets:
 
  1) Indicators Raw values and Percentil ranking (variables with suffix "_per") - For global comparison
- 2) Score dataset -  For comparison within income gruop (one file per income group)
+ 2) Score dataset -  For comparison within income group (one file per income group)
 
 The vast majority of indicators are downloaded from open libraries (WDI) or through web-scraping, sources and value of the indicators are explained in the code.
 However, some indicators could not be directly integrated. As they are the result were part of calculations from the Chief Economist Office (Sustainable Development.
