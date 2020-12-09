@@ -6,7 +6,6 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/Users/eves/Dropbox/MENA/")
 #knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
 ```
 
@@ -20,20 +19,20 @@ library(data.table)
 library(ggplot2)
 library(grid)
 library(Hmisc)
-#detach(package:plyr) ---- DETACH OR SOME FORMULAS WONT WORK
+#detach(package:plyr) 
 ```
 
-#Set Directories
+# Set Directories
 ```{r}
-dir_int<- "./Data/Benchmarking/SD_Profiles/Integrated data/"     #Folder with data generated in code Benchmarking_Data_V3
-#dir_int<-"./My Files/Integrated data/"
+#dir_int<-"./My Files/Integrated data/". #Folder with data generated in code Benchmarking_Data_V3
 dir_out<- "./Data/Benchmarking/SD_Profiles/Output/"              
 #dir_out<-"./My Files/Output/"
 #In your coumputer, this directory create  separate folders for income group - ex: ./My Files/Output/lmic -./My Files/Output/umic, etc, in oder to save countries info per income group
 getwd()
 ```
-#PART 1
-#CREATE PILLARS SCORES DEPENDING ON THE METHODOLOGY VERSION
+
+# PART 1
+## CREATE PILLARS SCORES DEPENDING ON THE METHODOLOGY VERSION
 
 #From this point the selection of indicators will produce different results
 
@@ -44,6 +43,7 @@ Refers to a set of indicators selected and vetted by the Chief Economist Office 
 Refers to a set of indicators selected by the MENA - Sustainable Development team focusing on Egypt analysis  
 
 #Calculate Pilars aggregate measures from the indicators (Global calculation)
+
 ```{r}
 #retrive database with all the variables generated in "Benchmarking_V3"
 
@@ -97,7 +97,7 @@ integrated3<-mutate(integrated3, Efficiency_v1 = rowMeans(select(integrated3, c(
 write.csv(integrated3, paste0(dir_int, "World_SD_values_V5_index.csv"), row.names = FALSE)
 ```
 
-#PART II - GRAPHING INDICADORS
+# Part II - GRAPHING INDICADORS
 If the composition of the pillars for each version doesn't change, start running the code from here.
 Last update of the indicators list for the two versions: Dec 5, 2020
 
@@ -223,7 +223,7 @@ colnames(country_all)<-str_replace(colnames(country_all), "water_efficiency_ceo"
 
 ```
 
-#Get the aggregate values of median/sd for each income group (to use in the table comparison we will create in excel)
+# Get the aggregate values of median/sd for each income group (to use in the table comparison we will create in excel)
 ```{r}
 options(scipen=999) #remove scientific notation
 
@@ -280,7 +280,7 @@ income_info$sd_median_up<-income_info$median + income_info$sd
 income_info$sd_median_down<-income_info$median - income_info$sd
 ```
 
-#Prepare data for PERCENTILE RANKING BAR GRAPH
+# Prepare data for PERCENTILE RANKING BAR GRAPH
 ```{r}
 #Duplicate a version of country_all for transformation- country_all needs to remain the same to be use in the percentil rank graph
 country_all2<-country_all
@@ -311,7 +311,7 @@ median_income_long <- reshape2::melt(median_income,
 country_long_complete<-left_join(country_long_complete, median_income_long, by=c("pilar", "income_red"))
 ```
 
-#From this point the selection between version 1 or 0 will affect the outcomes 
+# From this point the selection between version 1 or 0 will affect the outcomes 
 
 #Function for PERCENTILE RANKING BAR GRAPH -
 ```{r}
@@ -457,7 +457,7 @@ ggsave(graph2, file=paste0(dir_out, group,'/',i,"_barplot_per_group_v0.png"), wi
 ```
 
 
-#Loop to prepare data for SCORE PILARS COMPARISON GRAPH - CIRCULAR (PER PILARS)
+# Loop to prepare data for SCORE PILARS COMPARISON GRAPH - CIRCULAR (PER PILARS)
 ```{r}
 ### COUNTRY Percentile DATASET ###
 
@@ -618,7 +618,7 @@ write.csv(country_score, paste0(dir_out, group,'/',i,"_score_graphs.csv"), row.n
 }
 ```
 
-#Loop to GET MEDIAN/MEAN and SD values per country for PPT TABLE for the income and aspirational income group
+# Loop to GET MEDIAN/MEAN and SD values per country for PPT TABLE for the income and aspirational income group
 ```{r}
 for(i in country){
 
@@ -678,7 +678,7 @@ write.csv(income_info_country,paste0(dir_out, group,'/',i,"_tables_data.csv"), r
 }
 ```
 
-#Loop to prepare data for PERCENTIL RANKING GRAPH - CIRCULAR (ALL PILARS- Global data)
+# Loop to prepare data for PERCENTIL RANKING GRAPH - CIRCULAR (ALL PILARS- Global data)
 ```{r}
 
 for(i in country){
@@ -886,7 +886,7 @@ ggsave(s, file=paste0(dir_out, group,'/',i,"_score_graph_sust_v0.png"), width=10
 } 
 ```
 
-#Graphs per pilars (RISE) -INCLUSION
+# Graphs per pilars (RISE) -INCLUSION
 ```{r}
       ##########
      # Inclusion #    #Different set of indicators for V0 AND V1
@@ -1016,7 +1016,7 @@ ggsave(inc, file=paste0(dir_out, group,'/',i,"_score_graph_incl_v0.png"), width=
 }
 ```
 
-#Graphs per pilars (RISE) - Efficiency
+# Graphs per pilars (RISE) - Efficiency
 ```{r}
     ##########
 # 2. Efficiency  # Same set of indicators for V0 and V1 (still using version control in case it indicators change)
@@ -1271,7 +1271,7 @@ ggsave(r, file=paste0(dir_out, group,'/',i,"_score_graph_res_v0.png"), width=10,
   }
 }
 ```
-#Additional analysis for Egypt 
+# Additional analysis for Egypt 
 ```{r}
 #Compare against countries with lager GDO per capita growth Vietnam, Peru, Indonesia
 
@@ -1378,7 +1378,7 @@ ggsave(graph3, file=paste0(dir_out, group,'/',i,"_barplot_per_comparison_v1_colo
 
 
 
-#Additional analysis (Comparative measures of Water efficiency and land efficiency)
+# Additional analysis (Comparative measures of Water efficiency and land efficiency)
 ```{r}
 
 i="MAR"
