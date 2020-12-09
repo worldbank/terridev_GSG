@@ -6,11 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/Users/eves/Dropbox/MENA/")
-#knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
+knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
 ```
 
-#Required libraries
+# Required libraries
 ```{r}
 library(WDI)
 library(plyr)
@@ -22,25 +21,25 @@ library(countrycode)
 library(stringr)
 ```
 
-#Set Directories
+# Set Directories
 Create the following set of folders 
  dir_raw = store all the csv and excel files that cannot be download through web scraping
  dir_int = This folder is the outcome folder for the global results, name it as "Integrated data" to be consistent with the mapping script "Benchmarking_Graphs"
  
 ```{r}
-dir_raw<-"./Data/Benchmarking/SD_Profiles/Raw indicators/" #"./My Files/1.RISE/"
-dir_int<- "./Data/Benchmarking/SD_Profiles/Integrated data/" #"./My Files/Integrated data/"
+dir_raw<-"./My Files/1.RISE/Raw indicators/"
+dir_int<- "./My Files/Integrated data/"
 getwd()
 ```
 
-#Get WDI DATA
+# Get WDI DATA
 ```{r}
 ### WDI INDICATORS ###
 
 #List of WDI indicators used
 ind<-c('EN.POP.SLUM.UR.ZS', 'SL.TLF.CACT.FE.ZS', 'SH.STA.SMSS.ZS', 'SH.H2O.SMDW.ZS', 'HD.HCI.OVRL', 'SI.POV.GINI', 'SE.SEC.ENRR', 'SH.IMM.IDPT', 'account.t.d.7', 'NY.ADJ.SVNG.GN.ZS', 'EN.ATM.PM25.MC.M3', 'EG.FEC.RNEW.ZS', 'ER.H2O.INTR.PC', 'EN.ATM.GHGT.KT.CE', 'NY.GNP.MKTP.CD', 'EN.ATM.CO2E.PC')
 
-#Group indicator by year of data (number after ind-indicates the year used)
+#Group indicator by year of data (number after ind- refers to the year used)
 ind_12<-c('NY.GNP.MKTP.CD', 'EN.ATM.GHGT.KT.CE')
 ind_14<-c('EN.POP.SLUM.UR.ZS', 'ER.H2O.INTR.PC')
 ind_17<-c('SH.STA.SMSS.ZS', 'SH.H2O.SMDW.ZS', 'HD.HCI.OVRL','EN.ATM.PM25.MC.M3', 'NY.ADJ.SVNG.GN.ZS') 
@@ -133,7 +132,7 @@ colnames(GNI_data)[colnames(GNI_data)=="iso3c"] <- "iso3"
 ```
 
 
-#Import indicators by web scraping 
+# Import indicators by web scraping 
 ```{r}
 #####  WGI #####
 #All indicators from Worldwide Governance Indicators
@@ -216,7 +215,7 @@ women$Code[women$Economy=="West Bank and Gaza"] <- "PSE"
 women<-  subset(women, select= c("Code", "WBL INDEX"))
 colnames(women)<-c("iso3", "wbl")
 ```
-#Import indicators in excel and csv datasets
+# Import indicators in excel and csv datasets
 ```{r}
 #Read csv
 temp <- list.files(path= dir_raw, pattern = "*.csv")
@@ -360,7 +359,7 @@ ceo_data$Country<-NULL
 
 ```
 
-#List of countries with their updated income classification and regional group
+# List of countries with their updated income classification and regional group
 Some countries had changed income category and WDI hasn't update correctly, so better use the most current country classification (June 2020), available at https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-group
 ```{r}
 #Download country income classification
@@ -374,7 +373,7 @@ income_class <- read_excel(temp6, sheet = 1, skip= 4)%>%
 colnames(income_class)<-c("country", "iso3", "region", "income") 
 ```
 
-#Merge all datasets
+# Merge all datasets
 ```{r}
 #Join all indicators (income classification at the begining, to have countries information first)
 ind2 <- list(income_class, wdi_EG.FEC.RNEW.ZS, wdi_EN.POP.SLUM.UR.ZS, wdi_SL.TLF.CACT.FE.ZS, wdi_SH.STA.SMSS.ZS, wdi_SH.H2O.SMDW.ZS, wdi_HD.HCI.OVRL, wdi_SI.POV.GINI, wdi_SE.SEC.ENRR, wdi_SH.IMM.IDPT, wdi_account.t.d.7, wdi_NY.ADJ.SVNG.GN.ZS, wdi_EN.ATM.PM25.MC.M3, wdi_ER.H2O.INTR.PC, wdi_NY.GNP.MKTP.CD, wdi_EN.ATM.GHGT.KT.CE, wdi_EN.ATM.CO2E.PC, poverty, effect, corr, regq, internet, water_efficiency, aqua, epi_indices, frag_index, women, risk, agri_value, Land_tenure, Jambeck_et_al_data, muni_waste, lpi_aggregated_ranks, Confidence_The_Government, Most_people_can_be_trusted, FAO.land.productivity, ceo_data)
@@ -401,7 +400,7 @@ integrated2<-integrated%>%
 rm(list=setdiff(ls(), c("dir_int", "dir_raw", "integrated", "integrated2", "ceo_data", "list_countries")))
 ```
 
-#Create indicators list
+# Create indicators list
 Divide indicators in two lists: Two-sided higher value represents good performance or Inverse case: higher value represents bad performance 
 We name the indicators only before producing the graphs, otherwise names get corruptued when save it in the csv
 ```{r}
@@ -481,8 +480,13 @@ integrated2 <- integrated2 %>%
   mutate_each_(funs(per_inv), vars_inv)
 
 ```
+# Save all the database with raw values and percentile data (worldwide data)
+```{r}
+write.csv(integrated3, paste0(dir_int, "World_SD_values_V5.csv"), row.names = FALSE)
+```
 
-#Calculate Scores per Income group (Income group calculation)
+
+# Calculate Scores per Income group (Income group calculation)
 We apply score formula per income group and save the data
 ```{r}
 options(scipen=999)
@@ -531,7 +535,7 @@ integrated_hics_score <- integrated_hics_score %>% filter(income=="High income")
 write.csv(integrated_hics_score, paste0(dir_int, "DB_SD_hics_score.csv"), row.names = FALSE)
 
 
-##MENA## (no used, only calculated by internal use)
+##MENA## (no used, only calculated for internal use)
 integrated_MENA_score<- scores_reg_nor(integrated2, "Middle East & North Africa")  
 integrated_MENA_score_neg<-scores_reg_inv(integrated2, "Middle East & North Africa")
 #Join scores
@@ -540,67 +544,9 @@ integrated_MENA_score<-left_join(integrated_MENA_score,integrated_MENA_score_neg
 integrated_MENA_score <- integrated_MENA_score %>% filter(region=='Middle East & North Africa')
 # Save 
 write.csv(integrated_MENA_score, paste0(dir_int, "DB_SD_MENA_score.csv"), row.names = FALSE)
-
-```
-#Save list with all variables (percentage and raw values that we will later include in the formula)
-```{r}
-write.csv(integrated2, paste0(dir_int, "World_SD_values_V5.csv"), row.names = FALSE)
 ```
 
 
-
-
-#From this point the selection of indicators, will produce different results
-
-Two version of the benchmarking are generated with the following code:
-##v0 
-Refers to a set of indicators selected and vetted by the Chief Economist Office -Sustainable Development (work lead by Jason Daniel Russ). This version is updated with the criterio from November 30, 2020
-##v1
-Refers to a set of indicators selected by the MENA - Sustainable Development team focusing on Egypt analysis  
-
-#Calculate Pilars aggregate measures from the indicators (Global calculation)
-```{r}
-integrated3<-integrated2
-
-#####  Resilence   #######
-#For Resilience, the same set of indicators are used in the two versions, but for graphing proposes, generate the two variables
-#V0
-integrated3<-mutate(integrated3, Resilience_v0 = rowMeans(select(integrated3, c("risk_wellbeing_per", "risk_to_assets_per", "food_sec_per", "pop_dis_per", "rain_exp_per", "EN.POP.SLUM.UR.ZS_per")), na.rm = TRUE))
-#V1
-integrated3<-mutate(integrated3, Resilience_v1 = rowMeans(select(integrated3, c("risk_wellbeing_per", "risk_to_assets_per", "food_sec_per", "pop_dis_per", "rain_exp_per", "EN.POP.SLUM.UR.ZS_per")), na.rm = TRUE))
-
-######  Inclusion   #######
-
-#V0 Indicators not included compared with V1: "sec_aparat" (Security Apparatus) 
-integrated3<-mutate(integrated3, Inclusion_v0 = rowMeans(select(integrated3, c("pov_1016_per", 'SL.TLF.CACT.FE.ZS_per',"SH.STA.SMSS.ZS_per", "SH.H2O.SMDW.ZS_per", "HD.HCI.OVRL_per", "SI.POV.GINI_per", "SE.SEC.ENRR_per", "SH.IMM.IDPT_per", "account.t.d.7_per", "LGBT_acc_per", "wbl_per", "trust_ppl_per", "ref_idp_per", "conf_gov_per")), na.rm = TRUE))
-
-#V1
-integrated3<-mutate(integrated3, Inclusion_v1 = rowMeans(select(integrated3, c("pov_1016_per", 'SL.TLF.CACT.FE.ZS_per',"SH.STA.SMSS.ZS_per", "SH.H2O.SMDW.ZS_per", "HD.HCI.OVRL_per", "SI.POV.GINI_per", "SE.SEC.ENRR_per", "SH.IMM.IDPT_per", "account.t.d.7_per", "LGBT_acc_per", "wbl_per", "trust_ppl_per", "ref_idp_per", "sec_aparat_per", "conf_gov_per")), na.rm = TRUE))
-
-######   Sustainability  ########
-
-#V0 Indicators not included compared with V1: ,"waste_managed_per, BHV_new_per", "FSH_new_per", "GIB_new_per", "EN.ATM.CO2E.PC_per", "waste_rate_per"
- #Included: Forest loss
-integrated3<-mutate(integrated3, Sustainability_v0 = rowMeans(select(integrated3, c("NY.ADJ.SVNG.GN.ZS_per", "EN.ATM.PM25.MC.M3_per", "EG.FEC.RNEW.ZS_per", "ER.H2O.INTR.PC_per","wat_qua_per", "WWT.new_per", "forest_loss_per" )), na.rm = TRUE))
-
-# V1 Indicators not included compared with V0: "NY.ADJ.SVNG.GN.ZS_per"
-#Other indicators not included: "forest_loss_per"
-integrated3<-mutate(integrated3, Sustainability_v1 = rowMeans(select(integrated3, c("EN.ATM.PM25.MC.M3_per", "EG.FEC.RNEW.ZS_per", "ER.H2O.INTR.PC_per","wat_qua_per", "WWT.new_per", "waste_rate_per", "waste_managed_per", "BHV.new_per", "FSH.new_per", "GIB.new_per", "EN.ATM.CO2E.PC_per")), na.rm = TRUE))
-
-###### Efficiency ##############
-
-#For Efficiency a different version of water efficiency is used in V0 and in V1
-
-#V0 use water_efficiency_ceo - GNI/(waterwithdral*10*9) (calculated in this code- aqua datafram)
-#Other indicators not included: "reg_qua_per"
-integrated3<-mutate(integrated3, Efficiency_v0 = rowMeans(select(integrated3, c("agri_value_per", "agri_land_per", "gini_ghg_per", "gov_effect_per", "cont_corr_per", "lpi_score_per", "sdg9_intuse_per", "water_efficiency_ceo_per", "Tenure.insecurity_per")), na.rm = TRUE))
-
-#v1 use water_efficiency_FAO_per, value added per water withdrawn, expressed in USD/m3 from FAO (details also in this code)
-integrated3<-mutate(integrated3, Efficiency_v1 = rowMeans(select(integrated3, c("agri_value_per", "agri_land_per", "gini_ghg_per", "gov_effect_per", "cont_corr_per", "reg_qua_per", "lpi_score_per", "sdg9_intuse_per", "water_efficiency_FAO_per", "Tenure.insecurity_per")), na.rm = TRUE))
-
-#Save all the database with raw values and percentile data (worldwide data)
-write.csv(integrated3, paste0(dir_int, "World_SD_values_V5.csv"), row.names = FALSE)
-```
 
 
 
