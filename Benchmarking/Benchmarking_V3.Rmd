@@ -3,6 +3,7 @@ title: "Benchmarking V3"
 author: "Evelyn Sanchez"
 date: "10/19/2020"
 output: html_document
+
 ---
 
 ```{r setup, include=FALSE}
@@ -27,8 +28,8 @@ Create the following set of folders
  dir_int = This folder is the outcome folder for the global results, name it as "Integrated data" to be consistent with the mapping script "Benchmarking_Graphs"
  
 ```{r}
-dir_raw<-"./My Files/1.RISE/Raw indicators/"
-dir_int<- "./My Files/Integrated data/"
+dir_raw<-"./Raw indicators/"
+dir_int<- "./Integrated data/"
 getwd()
 ```
 
@@ -406,10 +407,10 @@ We name the indicators only before producing the graphs, otherwise names get cor
 ```{r}
 #Two-sided case: Higher value is better performance, but indicator can take on negative values
 #colnames(integrated2)
-two_side<-c('country', "iso3", "region", "income",  "food_sec", "SL.TLF.CACT.FE.ZS","SH.H2O.SMDW.ZS", "SH.H2O.SMDW.ZS", "SH.STA.SMSS.ZS", "HD.HCI.OVRL", "SE.SEC.ENRR", "SH.IMM.IDPT", "account.t.d.7", "LGBT_acc", "wbl", "conf_gov", "trust_ppl", "NY.ADJ.SVNG.GN.ZS", "EG.FEC.RNEW.ZS", "ER.H2O.INTR.PC", "wat_qua",  "agri_value", "agri_land", "gini_ghg", "cont_corr", "gov_effect", "reg_qua", "lpi_score", "WWT.new", "waste_managed", "BHV.new", "FSH.new", "sdg9_intuse", "water_efficiency_FAO", "water_efficiency_ceo")
+two_side<-c('country', "iso3", "region", "income",  "food_sec", "SL.TLF.CACT.FE.ZS","SH.H2O.SMDW.ZS", "SH.H2O.SMDW.ZS", "SH.STA.SMSS.ZS", "HD.HCI.OVRL", "SE.SEC.ENRR", "SH.IMM.IDPT", "account.t.d.7", "LGBT_acc", "wbl", "conf_gov", "trust_ppl", "NY.ADJ.SVNG.GN.ZS", "EG.FEC.RNEW.ZS", "ER.H2O.INTR.PC", "wat_qua",  "agri_value", "agri_land", "gini_ghg", "cont_corr", "gov_effect", "reg_qua", "lpi_score", "WWT.new", "waste_managed", "BHV.new", "FSH.new", "sdg9_intuse", "water_efficiency_FAO", "water_efficiency_ceo", "GIB.new")
 
 #Inverse case: Higher value is worse performance, (no negative)
-inv_side<- c('country', "iso3", "region", "income", "risk_to_assets", "risk_wellbeing", "pop_dis",  "rain_exp", "EN.POP.SLUM.UR.ZS", "pov_1016", "SI.POV.GINI", "EN.ATM.PM25.MC.M3", "forest_loss", "ref_idp", "sec_aparat", "waste_rate", "GIB.new", "EN.ATM.CO2E.PC", "Tenure.insecurity") 
+inv_side<- c('country', "iso3", "region", "income", "risk_to_assets", "risk_wellbeing", "pop_dis",  "rain_exp", "EN.POP.SLUM.UR.ZS", "pov_1016", "SI.POV.GINI", "EN.ATM.PM25.MC.M3", "forest_loss", "ref_idp", "sec_aparat", "waste_rate",  "EN.ATM.CO2E.PC", "Tenure.insecurity") 
 ```
 
 # Score Formulas For Income  Groups
@@ -482,7 +483,7 @@ integrated2 <- integrated2 %>%
 ```
 # Save all the database with raw values and percentile data (worldwide data)
 ```{r}
-write.csv(integrated3, paste0(dir_int, "World_SD_values_V5.csv"), row.names = FALSE)
+write.csv(integrated2, paste0(dir_int, "World_SD_values_V5.csv"), row.names = FALSE)
 ```
 
 

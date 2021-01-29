@@ -6,27 +6,31 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-#knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
+knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
 ```
 
 ```{r}
 library(WDI)
 library(dplyr)
 library(readxl)
+library(xml2)
 library(rvest)
 library(tidyverse)
 library(data.table)
 library(ggplot2)
 library(grid)
+library(lattice)
+library(survival)
+library(Formula)
 library(Hmisc)
 #detach(package:plyr) 
 ```
 
 # Set Directories
 ```{r}
-#dir_int<-"./My Files/Integrated data/". #Folder with data generated in code Benchmarking_Data_V3
-dir_out<- "./Data/Benchmarking/SD_Profiles/Output/"              
-#dir_out<-"./My Files/Output/"
+dir_int<-"./Integrated data/" #Folder with data generated in code Benchmarking_Data_V3
+#dir_out<- "./Data/Benchmarking/SD_Profiles/Output/"              
+dir_out<-"./Output/"
 #In your coumputer, this directory create  separate folders for income group - ex: ./My Files/Output/lmic -./My Files/Output/umic, etc, in oder to save countries info per income group
 getwd()
 ```
@@ -114,18 +118,18 @@ lmics <- as.character(lmics)
 
 # Low income
 country_estimates <- country_estimates_global %>% filter(income=='Low income')
-linc <- unique(country_estimates$iso3)
-linc <- as.character(linc)
+lics <- unique(country_estimates$iso3)
+lics <- as.character(lics)
 
 # Upper MICS
 country_estimates <- country_estimates_global %>% filter(income=='Upper middle income')
 umics <- unique(country_estimates$iso3)
 umics <- as.character(umics)
 
-# Lower MICS
-country_estimates <- country_estimates_global %>% filter(income=='Lower middle income')
-lmics <- unique(country_estimates$iso3)
-lmics <- as.character(lmics)
+# High Income
+country_estimates <- country_estimates_global %>% filter(income=='High income')
+hics <- unique(country_estimates$iso3)
+hics <- as.character(hics)
 
 ```
 
@@ -135,7 +139,7 @@ lmics <- as.character(lmics)
 #country <- lmics ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
 group <- 'lmics' ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
 
-#country=c("EGY")  #use one country for tests
+country="EGY"  #use one country for tests
 
 #Set files names to read according to comparison groups
 comparison_percentile <- paste0('DB_SD_',group,'_score')
@@ -146,6 +150,8 @@ comparison_score <- paste0('DB_SD_',group,'_score')
 #v= 0 Refers to a set of indicators selected and vetted by the Chief Economist Office -Sustainable Development (work lead by Jason Daniel Russ)
 # v=1 refers to a set of indicators selected by the MENA - Sustainable Development team focusing on Egypt results 
 #Each version would show a different set of indicators
+
+
 version <- 1 #  1 or 0
 ```
 
@@ -201,7 +207,7 @@ colnames(country_all)<-str_replace(colnames(country_all), "waste_managed", "Wast
 colnames(country_all)<-str_replace(colnames(country_all), "waste_rate", "*Municipal soild waste (kg/pc/day)")
 colnames(country_all)<-str_replace(colnames(country_all), "BHV.new", "Biodiversity & Habitat index")
 colnames(country_all)<-str_replace(colnames(country_all), "FSH.new", "Fisheries index")
-colnames(country_all)<-str_replace(colnames(country_all), "GIB.new", "*GHG intensity growth rate")
+colnames(country_all)<-str_replace(colnames(country_all), "GIB.new", "GHG intensity growth rate")
 colnames(country_all)<-str_replace(colnames(country_all), "EN.ATM.CO2E.PC", "*CO2 emissions (mtr/ton pc)")
 colnames(country_all)<-str_replace(colnames(country_all), "forest_loss", "*Forest loss %")
 
@@ -378,7 +384,7 @@ reg<-  ggplot(country_long, aes(x = r, y = percentil*100, fill = pilar_name_f, c
   geom_hline(data=country_long_median, aes(yintercept = median_income*100), color="grey", size=1.5)+ 
   facet_grid(~pilar_name_f, scales = "free")+
   #scale_y_continuous(labels = value, breks= value)+
-    labs(y = "Percentil rank in the world",
+    labs(y = "Percentile rank in the world",
   title = "")+
 theme_minimal()+
   theme(strip.text.x = element_text(size = 19, face = "bold"),
@@ -430,7 +436,7 @@ graph2  <-  ggplot(graph_bar2, aes(x = r, y = percentil_median*100, fill = pilar
   geom_hline( yintercept = 50 , color="red3", size=1)+ 
   facet_grid(~pilar_name_f, scales = "free")+
   #scale_y_continuous(labels = value, breks= value)+
-    labs(y = "Median percentil rank",
+    labs(y = "Median percentile rank",
   title = "")+
 theme_minimal()+
   theme(strip.text.x = element_text(size = 19, face = "bold"),
@@ -484,7 +490,7 @@ colnames(country_values)<-c("indicator", "raw_value")
 
 efficiency<-c("Agri. land productivity $/ha", "Agri. value added per worker $", "Total GNI/GHG emission","Governance effectiveness", "Control of corruption", "Logistic performance index", "Pop. using internet %", "Water use efficiency (USD/m3)", "Logistic performance index", "*Tenure insecurity %", "Water use efficiency (USD/m3)", "Water use efficiency (GNI/m3)")
 
-sustainability<-c("Adjusted net savings %", "*PM2.5 mean annual exposure mg/m3", "Renewal energy consumption %", "Renewal internal freshwater(pc)", "Water Quality SDG 6.3", "Wastewater treated %", "Waste properly managed %", "*Municipal soild waste (kg/pc/day)", "Biodiversity & Habitat index", "Fisheries index", "*GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "*Forest loss %")
+sustainability<-c("Adjusted net savings %", "*PM2.5 mean annual exposure mg/m3", "Renewal energy consumption %", "Renewal internal freshwater(pc)", "Water Quality SDG 6.3", "Wastewater treated %", "Waste properly managed %", "*Municipal soild waste (kg/pc/day)", "Biodiversity & Habitat index", "Fisheries index", "GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "*Forest loss %")
 
 inclusion<-c("*Extreme poverty headcount %", "*Gini index", "Immunization DPT %", "Safely managed sanitation %", "Safely managed drinking water %", "Immunization DPT %",  "Secondary school enrollment %", "Human Capital index", 'Account ownership, poorest 40%', "Female labor part.%", "Women, Business & Law index",  "LGBT acceptance index",  "Most ppl. can be trusted %", "*Refugees & IDPs index", "*Security apparatus index", "Confidence in the government" )
 
@@ -563,7 +569,7 @@ colnames(country_score)<-str_replace(colnames(country_score), "waste_managed", "
 colnames(country_score)<-str_replace(colnames(country_score), "waste_rate", "*Municipal soild waste (kg/pc/day)")
 colnames(country_score)<-str_replace(colnames(country_score), "BHV.new", "Biodiversity & Habitat index")
 colnames(country_score)<-str_replace(colnames(country_score), "FSH.new", "Fisheries index")
-colnames(country_score)<-str_replace(colnames(country_score), "GIB.new", "*GHG intensity growth rate")
+colnames(country_score)<-str_replace(colnames(country_score), "GIB.new", "GHG intensity growth rate")
 colnames(country_score)<-str_replace(colnames(country_score), "EN.ATM.CO2E.PC", "*CO2 emissions (mtr/ton pc)")
 colnames(country_score)<-str_replace(colnames(country_score), "water_efficiency_FAO", "Water use efficiency (USD/m3)")
 colnames(country_score)<-str_replace(colnames(country_score), "water_efficiency_ceo", "Water use efficiency (GNI/m3)")
@@ -687,7 +693,7 @@ for(i in country){
 
 if (version == 0){
   
-country_percent<-country_percent%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "*GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
+country_percent<-country_percent%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
 
 } else {
 country_percent<-country_percent%>% filter(indicator %nin%  c("Adjusted net savings %", "Water use efficiency (GNI/m3)"))
@@ -769,7 +775,7 @@ for(i in country){
 
 if (version == 0){
   
-country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "*GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
+country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
 
 } else {
 country_score<-country_score%>% filter(indicator %nin%  c("Adjusted net savings %", "Water use efficiency (GNI/m3)"))
@@ -899,7 +905,7 @@ for(i in country){
 
 if (version == 0){
   
-country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "*GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
+country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
 
 } else {
 country_score<-country_score%>% filter(indicator %nin%  c("Adjusted net savings %", "Water use efficiency (GNI/m3)"))
@@ -1029,7 +1035,7 @@ for(i in country){
 
 if (version == 0){
   
-country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "*GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
+country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
 
 } else {
 country_score<-country_score%>% filter(indicator %nin%  c("Adjusted net savings %", "Water use efficiency (GNI/m3)"))
@@ -1156,7 +1162,7 @@ for(i in country){
 
 if (version == 0){
   
-country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "*GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
+country_score<-country_score%>% filter(indicator %nin%  c("*Security apparatus index", "Waste properly managed %", "Biodiversity & Habitat index", "Fisheries index", "GHG intensity growth rate", "*CO2 emissions (mtr/ton pc)", "Water use efficiency (USD/m3)", "*Municipal soild waste (kg/pc/day)"))
 
 } else {
 country_score<-country_score%>% filter(indicator %nin%  c("Adjusted net savings %", "Water use efficiency (GNI/m3)"))
@@ -1271,207 +1277,214 @@ ggsave(r, file=paste0(dir_out, group,'/',i,"_score_graph_res_v0.png"), width=10,
   }
 }
 ```
-# Additional analysis for Egypt 
-```{r}
-#Compare against countries with lager GDO per capita growth Vietnam, Peru, Indonesia
-
-i="EGY"
-
-country_long<-country_long_complete
-
-country_long<-country_long%>% filter(str_detect(pilar, "v1"))
-median_income_filter<-median_income_long %>% filter(str_detect(pilar, "v1"))
-
-regional_group_df<-country_long%>%
-  filter(iso3 == i)%>%
-  select(region_red)
-
-regional_group<-regional_group_df[1,1]
-
-#Filter country and arrange percentiles values for graph (since it is a facet graph, percentil arrange gets messy)
-#Establish regional group beforehand
-country_long<-country_long%>%
-  dplyr::filter(region_red==regional_group)%>%
-  dplyr::filter(!is.na(percentil))%>%
-  ungroup() %>%
-  arrange(pilar, (desc(percentil)))%>%
-  mutate(r = row_number())%>%
-  mutate(pilar_name = str_replace(pilar, "_v0|_v1", ""))
-
-country_long$pilar_name_f<- factor(country_long$pilar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
-
-country_comparators<-country_long_complete%>%
-  filter(iso3 %in% c("IDN", "VNM", "PER"))%>%
-  filter(str_detect(pilar, "v1"))%>%
-  mutate(pilar_name = str_replace(pilar, "_v0|_v1", ""))
-country_comparators$pilar_name_f<- factor(country_comparators$pilar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
-
-#Once filtered by region, get regional median graph and for the next graph  
-country_long<-country_long%>%
-  group_by(pilar)%>%
-  mutate(median_regional= median(percentil, na.rm=T))
-
-# prepare regional median for next graph 
-regional_median<-country_long%>%
-  group_by(pilar)%>%
-  dplyr::summarise(percentil_median= median(percentil, na.rm=T))%>%
-  mutate(group = regional_group)%>%
-  select(group, everything())
-
-#Median_income database 
-country_long_median<-country_long%>%
-  filter(iso3 == i)
-
-
-#Rename col, add iso3 and merge bases
-
-colnames(median_income_filter)<-c("group", "pilar", "percentil_median")
-median_income_filter$iso3<-"AAAA" # name like this to make sure it mantains graph color order
-
-regional_median$iso3<-"AAAA" # name like this to make sure it mantains graph color order
-
-country_median_filter<-country_long_median%>%
-  dplyr::select(country, pilar, percentil, iso3)
-colnames(country_median_filter)<-c("group",  "pilar", "percentil_median", "iso3")
-
-#Merge regional median/income median/country median
-graph_bar3<-rbind(country_median_filter, median_income_filter, regional_median)
-
-#Prepare for graph
-graph_bar3<-graph_bar3%>%
-  dplyr::filter(!is.na(percentil_median))%>%
-  ungroup() %>%
-  arrange(pilar, (desc(percentil_median)))%>%
-  mutate(r = row_number())%>%
-  mutate(pilar_name = str_replace(pilar, "_v0|_v1", ""))
-
-graph_bar3$pilar_name_f<- factor(graph_bar3$pilar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
-
-graph3  <-  ggplot(graph_bar3, aes(x = r, y = percentil_median*100, fill = pilar_name_f, color = as.factor(iso3))) + 
-  geom_col(size=1.2, alpha=0.7)+
-  geom_hline(data=country_comparators, aes(yintercept = percentil*100, linetype= as.factor(iso3)), size=1.5)+
-  facet_grid(~pilar_name_f, scales = "free")+
-  #scale_y_continuous(labels = value, breks= value)+
-    labs(y = "Median percentil rank",
-  title = "")+
-theme_minimal()+
-  theme(strip.text.x = element_text(size = 19, face = "bold"),
-  axis.text.y = element_text(size = 16, hjust = .5, vjust = .5),
-  plot.title=element_text(size=14, face = "bold"),
-               axis.title.x=element_blank(),
-  axis.text.x = element_text(size= 14),
-                 legend.position = "none",
-  panel.grid.minor = element_blank(), 
-  panel.grid.major = element_blank())+
-  scale_fill_manual(values = c("darkcyan", "red2" ,"darkorange", "darkmagenta"))+
-  scale_color_manual(values=c("grey25", "green3"
-                             # , "grey17", "hotpink1", "blue"
-                             ))+
-  scale_linetype_manual(values=c("solid", "twodash", "dotted"))+
-  scale_x_continuous(breaks = graph_bar3$r, labels = str_wrap(graph_bar3$group, width = 7)) +
-  geom_text(aes(x=r, y=(percentil_median*100)+3 , label= as.integer(percentil_median*100)), color="black",alpha=1, size=6, inherit.aes = FALSE )
-
-ggsave(graph3, file=paste0(dir_out, group,'/',i,"_barplot_per_comparison_v1_color.png"), width=25, height=10) 
-#"chocolate1", "hotpink1", "blue"
-```
 
 
 
 
-# Additional analysis (Comparative measures of Water efficiency and land efficiency)
-```{r}
 
-i="MAR"
-#Get country income group
-income_country<-country_all%>% filter(iso3==i)%>% summarise((income_red))
-income_country<-income_country[1,1]
 
-#Get country aspiratinal group
-income_aspi<-country_all%>% filter(iso3==i)%>% summarise((income_aspiration))
-income_aspi<-income_aspi[1,1]
 
-#Get country aspiratinal group
-region<-country_all%>% filter(iso3==i)%>% summarise((region_red))
-region_g<-region[1,1]
+<!-- # Additional analysis for Egypt -->
+<!-- ```{r} -->
+<!-- #Compare against countries with lager GDO per capita growth Vietnam, Peru, Indonesia -->
 
-#Pull country data
-country_val<- read.csv(file=paste0(dir_out, group,'/',i,"_percentil.csv"), header=TRUE, sep=",")%>%
-  select(-percentil)
+<!-- i="EGY" -->
 
-country_val<-country_val%>%
-filter(indicator == "Water use efficiency (USD/m3)"| indicator == "Agri. land productivity $/ha")
-colnames(country_val)[colnames(country_val)=="raw_value"] <- "value"
-country_val$region<- i  
-country_val$category<-NULL
+<!-- country_long<-country_long_complete -->
 
-#country_aspi
-income_info_country<-income_info%>%
-  filter(income_red == income_country | income_red == income_aspi)
+<!-- country_long<-country_long%>% filter(str_detect(pilar, "v1")) -->
+<!-- median_income_filter<-median_income_long %>% filter(str_detect(pilar, "v1")) -->
 
-income_info_country<-income_info_country%>%
-  filter(indicator == "Water use efficiency (USD/m3)"| indicator == "Agri. land productivity $/ha")
+<!-- regional_group_df<-country_long%>% -->
+<!--   filter(iso3 == i)%>% -->
+<!--   select(region_red) -->
 
-income_info_country<-income_info_country%>%
-  select(indicator, median, income_red)
-colnames(income_info_country)<-c("indicator", "value", "region")
+<!-- regional_group<-regional_group_df[1,1] -->
 
-mena_info <- country_all%>%  group_by(region_red)%>%
-  select(-matches('_per'))%>% dplyr::summarise(across(where(is.numeric), list(median= ~median(., na.rm = T)), .names = "{col}"))
-mena_info<- reshape2::melt(mena_info, id.vars=c("region_red"), variable.name="indicator", value.name="median")
-mena_info<-mena_info%>%
-  filter(region_red== region_g)%>%
-filter(indicator == "Water use efficiency (USD/m3)"| indicator == "Agri. land productivity $/ha")
-mena_info<-mena_info%>%
-  select(indicator, median, region_red)
+<!-- #Filter country and arrange percentiles values for graph (since it is a facet graph, percentil arrange gets messy) -->
+<!-- #Establish regional group beforehand -->
+<!-- country_long<-country_long%>% -->
+<!--   dplyr::filter(region_red==regional_group)%>% -->
+<!--   dplyr::filter(!is.na(percentil))%>% -->
+<!--   ungroup() %>% -->
+<!--   arrange(pilar, (desc(percentil)))%>% -->
+<!--   mutate(r = row_number())%>% -->
+<!--   mutate(pilar_name = str_replace(pilar, "_v0|_v1", "")) -->
 
-colnames(mena_info)<-c("indicator", "value", "region")
-graph_eff<-rbind(mena_info, income_info_country, country_val)
+<!-- country_long$pilar_name_f<- factor(country_long$pilar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency")) -->
 
-graph_eff$value<-as.numeric(graph_eff$value)
-graph_eff$value<-format(round(graph_eff$value, 2), nsmall = 2)
-graph_eff$value<-as.numeric(graph_eff$value)
+<!-- country_comparators<-country_long_complete%>% -->
+<!--   filter(iso3 %in% c("IDN", "VNM", "PER"))%>% -->
+<!--   filter(str_detect(pilar, "v1"))%>% -->
+<!--   mutate(pilar_name = str_replace(pilar, "_v0|_v1", "")) -->
+<!-- country_comparators$pilar_name_f<- factor(country_comparators$pilar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency")) -->
 
-graph_eff%>%
-  filter(indicator == "Water use efficiency (USD/m3)")%>%
-  filter(region != region_g)%>%
-ggplot(aes(x = reorder(region, -value), y = value)) + 
-    geom_bar(stat = "identity",position = "dodge", fill="steelblue")+
-    geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size= 3)+
-  labs(
-  y = "(USD/m3)",
-  x= "",
-  title = "Water use efficiency (USD/m3)",
-  caption= "Source: FAO, 2017")+
-  theme_light()
-ggsave(paste0(dir_out, "Water_Efficiency", i, ".png"), height=6, width = 8, units = c("in"))
+<!-- #Once filtered by region, get regional median graph and for the next graph -->
+<!-- country_long<-country_long%>% -->
+<!--   group_by(pilar)%>% -->
+<!--   mutate(median_regional= median(percentil, na.rm=T)) -->
 
-graph_eff%>%
-  filter(indicator == "Agri. land productivity $/ha")%>%
-  #filter(region != region_g)%>%
-ggplot(aes(x = reorder(region, -value), y = value)) + 
-    geom_bar(stat = "identity",position = "dodge", fill="darkcyan")+
-  geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size= 3)+
-  labs(
-  y = "$/ha",
-  x= "",
-  title = "Agri. land productivity $/ha",
-  caption= "Source: Calculations using Gross Production Value and Total Agricultural Land from FAO, 2016")+
-  theme_light()
-ggsave(paste0(dir_out, "Land productivity", i, ".png"), height=6, width = 8, units = c("in"))
+<!-- # prepare regional median for next graph -->
+<!-- regional_median<-country_long%>% -->
+<!--   group_by(pilar)%>% -->
+<!--   dplyr::summarise(percentil_median= median(percentil, na.rm=T))%>% -->
+<!--   mutate(group = regional_group)%>% -->
+<!--   select(group, everything()) -->
 
-graph_eff%>%
-  filter(indicator == "Agri. land productivity $/ha")%>%
-  filter(region != region_g)%>%
-ggplot(aes(x = reorder(region, -value), y = value)) + 
-    geom_bar(stat = "identity",position = "dodge", fill="darkcyan")+
-    geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size= 3)+
-  labs(
-  y = "$/ha",
-  x= "",
-  title = "Agri. land productivity $/ha",
-  caption= "Source: Calculations using Gross Production Value and Total Agricultural Land from FAO, 2016")+
-  theme_light()
+<!-- #Median_income database -->
+<!-- country_long_median<-country_long%>% -->
+<!--   filter(iso3 == i) -->
 
-ggsave(paste(dir_out, "Land productivity", "income",i , ".png"), height=6, width = 8, units = c("in"))
-```
+
+<!-- #Rename col, add iso3 and merge bases -->
+
+<!-- colnames(median_income_filter)<-c("group", "pilar", "percentil_median") -->
+<!-- median_income_filter$iso3<-"AAAA" # name like this to make sure it mantains graph color order -->
+
+<!-- regional_median$iso3<-"AAAA" # name like this to make sure it mantains graph color order -->
+
+<!-- country_median_filter<-country_long_median%>% -->
+<!--   dplyr::select(country, pilar, percentil, iso3) -->
+<!-- colnames(country_median_filter)<-c("group",  "pilar", "percentil_median", "iso3") -->
+
+<!-- #Merge regional median/income median/country median -->
+<!-- graph_bar3<-rbind(country_median_filter, median_income_filter, regional_median) -->
+
+<!-- #Prepare for graph -->
+<!-- graph_bar3<-graph_bar3%>% -->
+<!--   dplyr::filter(!is.na(percentil_median))%>% -->
+<!--   ungroup() %>% -->
+<!--   arrange(pilar, (desc(percentil_median)))%>% -->
+<!--   mutate(r = row_number())%>% -->
+<!--   mutate(pilar_name = str_replace(pilar, "_v0|_v1", "")) -->
+
+<!-- graph_bar3$pilar_name_f<- factor(graph_bar3$pilar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency")) -->
+
+<!-- graph3  <-  ggplot(graph_bar3, aes(x = r, y = percentil_median*100, fill = pilar_name_f, color = as.factor(iso3))) + -->
+<!--   geom_col(size=1.2, alpha=0.7)+ -->
+<!--   geom_hline(data=country_comparators, aes(yintercept = percentil*100, linetype= as.factor(iso3)), size=1.5)+ -->
+<!--   facet_grid(~pilar_name_f, scales = "free")+ -->
+<!--   #scale_y_continuous(labels = value, breks= value)+ -->
+<!--     labs(y = "Median percentil rank", -->
+<!--   title = "")+ -->
+<!-- theme_minimal()+ -->
+<!--   theme(strip.text.x = element_text(size = 19, face = "bold"), -->
+<!--   axis.text.y = element_text(size = 16, hjust = .5, vjust = .5), -->
+<!--   plot.title=element_text(size=14, face = "bold"), -->
+<!--                axis.title.x=element_blank(), -->
+<!--   axis.text.x = element_text(size= 14), -->
+<!--                  legend.position = "none", -->
+<!--   panel.grid.minor = element_blank(), -->
+<!--   panel.grid.major = element_blank())+ -->
+<!--   scale_fill_manual(values = c("darkcyan", "red2" ,"darkorange", "darkmagenta"))+ -->
+<!--   scale_color_manual(values=c("grey25", "green3" -->
+<!--                              # , "grey17", "hotpink1", "blue" -->
+<!--                              ))+ -->
+<!--   scale_linetype_manual(values=c("solid", "twodash", "dotted"))+ -->
+<!--   scale_x_continuous(breaks = graph_bar3$r, labels = str_wrap(graph_bar3$group, width = 7)) + -->
+<!--   geom_text(aes(x=r, y=(percentil_median*100)+3 , label= as.integer(percentil_median*100)), color="black",alpha=1, size=6, inherit.aes = FALSE ) -->
+
+<!-- ggsave(graph3, file=paste0(dir_out, group,'/',i,"_barplot_per_comparison_v1_color.png"), width=25, height=10) -->
+<!-- #"chocolate1", "hotpink1", "blue" -->
+<!-- ``` -->
+
+
+
+
+<!-- # Additional analysis (Comparative measures of Water efficiency and land efficiency) -->
+<!-- ```{r} -->
+
+<!-- i="MAR" -->
+<!-- #Get country income group -->
+<!-- income_country<-country_all%>% filter(iso3==i)%>% summarise((income_red)) -->
+<!-- income_country<-income_country[1,1] -->
+
+<!-- #Get country aspiratinal group -->
+<!-- income_aspi<-country_all%>% filter(iso3==i)%>% summarise((income_aspiration)) -->
+<!-- income_aspi<-income_aspi[1,1] -->
+
+<!-- #Get country aspiratinal group -->
+<!-- region<-country_all%>% filter(iso3==i)%>% summarise((region_red)) -->
+<!-- region_g<-region[1,1] -->
+
+<!-- #Pull country data -->
+<!-- country_val<- read.csv(file=paste0(dir_out, group,'/',i,"_percentil.csv"), header=TRUE, sep=",")%>% -->
+<!--   select(-percentil) -->
+
+<!-- country_val<-country_val%>% -->
+<!-- filter(indicator == "Water use efficiency (USD/m3)"| indicator == "Agri. land productivity $/ha") -->
+<!-- colnames(country_val)[colnames(country_val)=="raw_value"] <- "value" -->
+<!-- country_val$region<- i   -->
+<!-- country_val$category<-NULL -->
+
+<!-- #country_aspi -->
+<!-- income_info_country<-income_info%>% -->
+<!--   filter(income_red == income_country | income_red == income_aspi) -->
+
+<!-- income_info_country<-income_info_country%>% -->
+<!--   filter(indicator == "Water use efficiency (USD/m3)"| indicator == "Agri. land productivity $/ha") -->
+
+<!-- income_info_country<-income_info_country%>% -->
+<!--   select(indicator, median, income_red) -->
+<!-- colnames(income_info_country)<-c("indicator", "value", "region") -->
+
+<!-- mena_info <- country_all%>%  group_by(region_red)%>% -->
+<!--   select(-matches('_per'))%>% dplyr::summarise(across(where(is.numeric), list(median= ~median(., na.rm = T)), .names = "{col}")) -->
+<!-- mena_info<- reshape2::melt(mena_info, id.vars=c("region_red"), variable.name="indicator", value.name="median") -->
+<!-- mena_info<-mena_info%>% -->
+<!--   filter(region_red== region_g)%>% -->
+<!-- filter(indicator == "Water use efficiency (USD/m3)"| indicator == "Agri. land productivity $/ha") -->
+<!-- mena_info<-mena_info%>% -->
+<!--   select(indicator, median, region_red) -->
+
+<!-- colnames(mena_info)<-c("indicator", "value", "region") -->
+<!-- graph_eff<-rbind(mena_info, income_info_country, country_val) -->
+
+<!-- graph_eff$value<-as.numeric(graph_eff$value) -->
+<!-- graph_eff$value<-format(round(graph_eff$value, 2), nsmall = 2) -->
+<!-- graph_eff$value<-as.numeric(graph_eff$value) -->
+
+<!-- graph_eff%>% -->
+<!--   filter(indicator == "Water use efficiency (USD/m3)")%>% -->
+<!--   filter(region != region_g)%>% -->
+<!-- ggplot(aes(x = reorder(region, -value), y = value)) +  -->
+<!--     geom_bar(stat = "identity",position = "dodge", fill="steelblue")+ -->
+<!--     geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size= 3)+ -->
+<!--   labs( -->
+<!--   y = "(USD/m3)", -->
+<!--   x= "", -->
+<!--   title = "Water use efficiency (USD/m3)", -->
+<!--   caption= "Source: FAO, 2017")+ -->
+<!--   theme_light() -->
+<!-- ggsave(paste0(dir_out, "Water_Efficiency", i, ".png"), height=6, width = 8, units = c("in")) -->
+
+<!-- graph_eff%>% -->
+<!--   filter(indicator == "Agri. land productivity $/ha")%>% -->
+<!--   #filter(region != region_g)%>% -->
+<!-- ggplot(aes(x = reorder(region, -value), y = value)) +  -->
+<!--     geom_bar(stat = "identity",position = "dodge", fill="darkcyan")+ -->
+<!--   geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size= 3)+ -->
+<!--   labs( -->
+<!--   y = "$/ha", -->
+<!--   x= "", -->
+<!--   title = "Agri. land productivity $/ha", -->
+<!--   caption= "Source: Calculations using Gross Production Value and Total Agricultural Land from FAO, 2016")+ -->
+<!--   theme_light() -->
+<!-- ggsave(paste0(dir_out, "Land productivity", i, ".png"), height=6, width = 8, units = c("in")) -->
+
+<!-- graph_eff%>% -->
+<!--   filter(indicator == "Agri. land productivity $/ha")%>% -->
+<!--   filter(region != region_g)%>% -->
+<!-- ggplot(aes(x = reorder(region, -value), y = value)) +  -->
+<!--     geom_bar(stat = "identity",position = "dodge", fill="darkcyan")+ -->
+<!--     geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size= 3)+ -->
+<!--   labs( -->
+<!--   y = "$/ha", -->
+<!--   x= "", -->
+<!--   title = "Agri. land productivity $/ha", -->
+<!--   caption= "Source: Calculations using Gross Production Value and Total Agricultural Land from FAO, 2016")+ -->
+<!--   theme_light() -->
+
+<!-- ggsave(paste(dir_out, "Land productivity", "income",i , ".png"), height=6, width = 8, units = c("in")) -->
+<!-- ``` -->
 
