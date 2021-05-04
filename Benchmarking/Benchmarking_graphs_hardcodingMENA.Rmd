@@ -1,0 +1,1668 @@
+---
+title: "Benchmarking_Graphs"
+author: "Giuseppe Rossitti"
+date: "12/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "C:/Users/####/OneDrive/")
+```
+
+```{r}
+library(WDI)
+library(dplyr)
+library(readxl)
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(grid)
+library(lattice)
+library(survival)
+library(Formula)
+library(Hmisc)
+#detach(package:plyr) 
+```
+
+# Set Directories
+```{r}
+dir_int<-"./Integrated data/" #Folder with data generated in code Benchmarking_Data_V3
+#dir_out<- "./Data/Benchmarking/SD_Profiles/Output/"              
+dir_out<-"./Output/"
+#In your coumputer, this directory create  separate folders for income group - ex: ./My Files/Output/lmic -./My Files/Output/umic, etc, in oder to save countries info per income group
+getwd()
+```
+
+# PART 1
+This file has been used to hardcode the graphs for the MENA averages for the policy paper
+
+
+
+#Set comparators -INCOME GROUP and REGIONAL GROUP and VERSION
+```{r}
+#Income group (select same category)
+group <- 'MENA' ### HERE CHOOSE INCOME GROUP WE WANT TO COMPARE TO FROM ABOVE VARIABES ###
+
+country="MENA"  #use one country for tests
+
+#Set files names to read according to comparison groups
+
+comparison_percentile <- paste0('DB_SD_',group,'_score')
+comparison_score <- paste0('DB_SD_',group,'_score')
+
+### Version indicator
+#choose 0, 1 or 20. 
+#v= 0 Refers to a set of indicators selected and vetted by the Chief Economist Office -Sustainable Development (work lead by Jason Daniel Russ)
+# v=1 refers to a set of indicators selected by the MENA - Sustainable Development team focusing on Egypt results 
+#Each version would show a different set of indicators
+#v=9 refers to a set of indicators selected by the Egyptian MoPED - Ministry of Planning and Economic Development
+
+version <- 2 #  0,1,2 or 9 for MoPED indicators
+```
+
+
+#Set text size for graphs to be smaller in Version 2
+```{r}
+if (version != 2){
+  perctext <- 3.5
+  pillartext <- 4.5
+  
+} else {
+  perctext <-1.5
+  pillartext <- 3
+}
+```
+
+
+#Calculate Pillars aggregate measures from the indicators (Global calculation)
+
+```{r}
+#Retreive database with all the variables generated in "Benchmarking_V3"
+
+integrated3 <- read.csv(paste0(dir_int, "World_SD_values_V5.csv"))
+
+# For each version add all indicators
+
+base <- c("country","iso3","income","region")
+
+v0 <- c("risk_wellbeing", "risk_to_assets", "food_sec", "pop_dis", "rain_exp", "EN.POP.SLUM.UR.ZS", "pov_1016", 'SL.TLF.CACT.FE.ZS',"SH.STA.SMSS.ZS", "SH.H2O.SMDW.ZS", "HD.HCI.OVRL", "SI.POV.GINI", "SE.SEC.ENRR", "SH.IMM.IDPT", "account.t.d.7", "LGBT_acc", "wbl", "trust_ppl", "ref_idp", "conf_gov", "NY.ADJ.SVNG.GN.ZS", "EN.ATM.PM25.MC.M3", "EG.FEC.RNEW.ZS", "ER.H2O.INTR.PC","wat_qua", "WWT.new" ,"forest_loss","agri_value", "agri_land", "gini_ghg", "gov_effect", "cont_corr", "lpi_score", "sdg9_intuse", "water_efficiency_ceo", "Tenure.insecurity" )
+v0_per <- paste(v0, "_per", sep='')
+
+v1 <- c("risk_wellbeing", "risk_to_assets", "food_sec", "pop_dis", "rain_exp", "EN.POP.SLUM.UR.ZS", "pov_1016", 'SL.TLF.CACT.FE.ZS',"SH.STA.SMSS.ZS", "SH.H2O.SMDW.ZS", "HD.HCI.OVRL", "SI.POV.GINI", "SE.SEC.ENRR", "SH.IMM.IDPT", "account.t.d.7", "LGBT_acc", "wbl", "trust_ppl", "ref_idp", "sec_aparat", "conf_gov", "EN.ATM.PM25.MC.M3", "EG.FEC.RNEW.ZS", "ER.H2O.INTR.PC","wat_qua", "WWT.new", "waste_rate", "waste_managed", "BHV.new", "FSH.new", "GIB.new", "EN.ATM.CO2E.PC" , "forest_loss", "agri_value", "agri_land", "gini_ghg", "gov_effect", "cont_corr", "lpi_score", "sdg9_intuse", "water_efficiency_FAO", "Tenure.insecurity")
+v1_per <- paste(v1, "_per", sep='')
+
+
+v2 <- c("pop_dis", "rain_exp", "pov_1016", 'SL.TLF.CACT.FE.ZS', "HD.HCI.OVRL", "SI.POV.GINI", "SE.SEC.ENRR", "SH.IMM.IDPT", "account.t.d.7", "LGBT_acc", "wbl", "ref_idp", "EN.ATM.PM25.MC.M3", "EG.FEC.RNEW.ZS","wat_qua", "WWT.new", "waste_rate", "waste_managed", "BHV.new", "FSH.new", "EN.ATM.CO2E.PC" , "forest_loss", "agri_value", "agri_land", "gini_ghg", "gov_effect", "cont_corr", "lpi_score", "water_efficiency_ceo", "SG.GEN.PARL.ZS",
+"SH.MED.PHYS.ZS", "SH.UHC.SRVS.CV.XD", "acc_sani_SDG", "acc_water_SDG", "rai", "rule_law", "IT.CEL.SETS.P2", "IT.NET.USER.ZS", "rapid_trans", "displaced", "wat_stress_SDG", "glob_hunger_index", "terror", "pop_slums_SDG", "heal_01_NDG", "habi_01_NDG", "habi_02_NDG", "infr_02_NDG", "food_03_NDG", "infr_03_NDG", "heal_03_NDG", "SH.STA.AIRP.P5","SH.STA.WASH.P5","fao_withdraw","ecos_04_NDG","chloroph_SDG","energ_int","EG.ELC.ACCS.ZS","reg_qua","ghg_pc","pop_epid","patents","IS.SHP.GCNW.XQ","dai")
+
+
+v2_per <- paste(v2, "_per", sep='')
+
+
+v9 <- c("food_sec",   "EN.POP.SLUM.UR.ZS", "SH.STA.TRAF.P5", "gdpgr_1519" ,"u_1519","infl_1519","hepat_SDG", "pov_1016", "SL.TLF.CACT.FE.ZS","acc_sani_SDG","acc_water_SDG", "SI.POV.GINI", "EG.ELC.ACCS.ZS", "SI.POV.NAHC", "SG.GEN.PARL.ZS","wom_manage_SDG", "FX.OWN.TOTL.FE.ZS" , "per_si_allsi.cov_pop_tot", "SE.ADT.LITR.FE.ZS" , "WWT.new", "waste_rate", "waste_managed", "BHV.new", "EN.ATM.CO2E.PP.GD", "sdg9_intuse", "debt_gdp_IMF", "capstock_imf", "gov_spe_edu_SDG", "balance_imf", "taxrev_imf","you_neet_1317","smes_wom")
+
+v9_per <- paste(v9, "_per", sep='')
+
+
+# Subset the database based on the indicators used in each version
+
+if (version == 0){
+  integrated3 <- subset(integrated3, select = c(base,v0,v0_per))
+} else {
+  if (version == 1) {
+  integrated3 <- subset(integrated3, select = c(base,v1,v1_per))
+  } else {
+      if (version == 2) {
+  integrated3 <- subset(integrated3, select = c(base,v2,v2_per))
+  } else {
+  integrated3 <- subset(integrated3, select = c(base,v9,v9_per))
+}}}  
+
+
+
+
+#V0 Resilience (same set v0 and v1)
+if (version==0){
+integrated3<-mutate(integrated3, Resilience_v0 = rowMeans(select(integrated3, c("risk_wellbeing_per", "risk_to_assets_per", "food_sec_per", "pop_dis_per", "rain_exp_per", "EN.POP.SLUM.UR.ZS_per")), na.rm = TRUE))
+
+#V0 Inclusion Indicators not included compared with V1: "sec_aparat" (Security Apparatus) 
+integrated3<-mutate(integrated3, Inclusion_v0 = rowMeans(select(integrated3, c("pov_1016_per", 'SL.TLF.CACT.FE.ZS_per',"SH.STA.SMSS.ZS_per", "SH.H2O.SMDW.ZS_per", "HD.HCI.OVRL_per", "SI.POV.GINI_per", "SE.SEC.ENRR_per", "SH.IMM.IDPT_per", "account.t.d.7_per", "LGBT_acc_per", "wbl_per", "trust_ppl_per", "ref_idp_per", "conf_gov_per")), na.rm = TRUE))
+
+#V0 Sustainability Indicators not included compared with V1: ,"waste_managed_per, BHV_new_per", "FSH_new_per", "GIB_new_per", "EN.ATM.CO2E.PC_per", "waste_rate_per"
+#Note, forest loss is excluded when the country has very low levels of forest loss
+
+integrated3<-mutate(integrated3, Sustainability_v0 = rowMeans(select(integrated3, c("NY.ADJ.SVNG.GN.ZS_per", "EN.ATM.PM25.MC.M3_per", "EG.FEC.RNEW.ZS_per", "ER.H2O.INTR.PC_per","wat_qua_per", "WWT.new_per" ,"forest_loss_per" )), na.rm = TRUE))
+
+#V0 Efficiency use water_efficiency_ceo - GNI/(waterwithdral*10*9) (calculated in this code- aqua dataframe)
+#Other indicators not included: "reg_qua_per"
+
+integrated3<-mutate(integrated3, Efficiency_v0 = rowMeans(select(integrated3, c("agri_value_per", "agri_land_per", "gini_ghg_per", "gov_effect_per", "cont_corr_per", "lpi_score_per", "sdg9_intuse_per", "water_efficiency_ceo_per", "Tenure.insecurity_per")), na.rm = TRUE))
+} else {
+  if (version == 1) {
+    #V1 Resilience
+integrated3<-mutate(integrated3, Resilience_v1 = rowMeans(select(integrated3, c("risk_wellbeing_per", "risk_to_assets_per", "food_sec_per", "pop_dis_per", "rain_exp_per", "EN.POP.SLUM.UR.ZS_per")), na.rm = TRUE))
+  
+  #V1 Inclusion
+integrated3<-mutate(integrated3, Inclusion_v1 = rowMeans(select(integrated3, c("pov_1016_per", 'SL.TLF.CACT.FE.ZS_per',"SH.STA.SMSS.ZS_per", "SH.H2O.SMDW.ZS_per", "HD.HCI.OVRL_per", "SI.POV.GINI_per", "SE.SEC.ENRR_per", "SH.IMM.IDPT_per", "account.t.d.7_per", "LGBT_acc_per", "wbl_per", "trust_ppl_per", "ref_idp_per", "sec_aparat_per", "conf_gov_per")), na.rm = TRUE))
+
+# V1 Sustainability Indicators not included compared with V0: "NY.ADJ.SVNG.GN.ZS_per"
+#Note, forest loss is excluded when the country has very low levels of forest loss
+integrated3<-mutate(integrated3, Sustainability_v1 = rowMeans(select(integrated3, c("EN.ATM.PM25.MC.M3_per", "EG.FEC.RNEW.ZS_per", "ER.H2O.INTR.PC_per","wat_qua_per", "WWT.new_per", "waste_rate_per", "waste_managed_per", "BHV.new_per", "FSH.new_per", "GIB.new_per", "EN.ATM.CO2E.PC_per" , "forest_loss_per")), na.rm = TRUE))
+
+#v1 Efficiency use water_efficiency_FAO_per, value added per water withdrawn, expressed in USD/m3 from FAO (details also in this code)
+#Other indicators not included: "reg_qua_per"
+integrated3<-mutate(integrated3, Efficiency_v1 = rowMeans(select(integrated3, c("agri_value_per", "agri_land_per", "gini_ghg_per", "gov_effect_per", "cont_corr_per", "lpi_score_per", "sdg9_intuse_per", "water_efficiency_FAO_per", "Tenure.insecurity_per")), na.rm = TRUE))
+} else {
+  
+  
+  if (version == 2) {
+
+    #V2 Resilience
+integrated3<-mutate(integrated3, Resilience_v2 = rowMeans(select(integrated3, c( "pop_dis_per", "rain_exp_per", "pop_epid_per", "pop_slums_SDG_per", "displaced_per" , "terror_per" , "heal_01_NDG_per" , "habi_01_NDG_per",  "habi_02_NDG_per",   "infr_02_NDG_per","infr_03_NDG_per" ,  "food_03_NDG_per",  "SH.MED.PHYS.ZS_per", "heal_03_NDG_per" ,"glob_hunger_index_per","wat_stress_SDG_per" )), na.rm = TRUE))
+                                                                 
+
+  
+  #V2 Inclusion
+integrated3<-mutate(integrated3, Inclusion_v2 = rowMeans(select(integrated3, c("pov_1016_per", 'SL.TLF.CACT.FE.ZS_per', "HD.HCI.OVRL_per", "SI.POV.GINI_per", "SE.SEC.ENRR_per", "SH.IMM.IDPT_per", "account.t.d.7_per", "LGBT_acc_per", "wbl_per",  "ref_idp_per", "SG.GEN.PARL.ZS_per","rai_per" ,"acc_sani_SDG_per", "acc_water_SDG_per","SH.UHC.SRVS.CV.XD_per", "EG.ELC.ACCS.ZS_per" )), na.rm = TRUE))
+
+# V2 Sustainability 
+integrated3<-mutate(integrated3, Sustainability_v2 = rowMeans(select(integrated3, c("EN.ATM.PM25.MC.M3_per", "EG.FEC.RNEW.ZS_per", "wat_qua_per", "WWT.new_per", "waste_rate_per", "waste_managed_per", "BHV.new_per", "FSH.new_per", "ghg_pc_per", "EN.ATM.CO2E.PC_per" , "forest_loss_per", "SH.STA.AIRP.P5_per" , "SH.STA.WASH.P5_per", "ecos_04_NDG_per", "chloroph_SDG_per", "fao_withdraw_per" )), na.rm = TRUE))
+
+#v2 Efficiency 
+integrated3<-mutate(integrated3, Efficiency_v2 = rowMeans(select(integrated3, c("agri_value_per", "agri_land_per", "gini_ghg_per", "gov_effect_per", "cont_corr_per", "lpi_score_per",  "water_efficiency_ceo_per","rule_law_per" , "IT.CEL.SETS.P2_per", "IT.NET.USER.ZS_per","rapid_trans_per" ,"energ_int_per" , "reg_qua_per","patents_per","IS.SHP.GCNW.XQ_per","dai_per")), na.rm = TRUE))    
+    
+    
+} else {
+
+#v9 (MoPED) Resilience
+integrated3<-mutate(integrated3, Resilience_v9 = rowMeans(select(integrated3, c( "food_sec_per",   "EN.POP.SLUM.UR.ZS_per", "SH.STA.TRAF.P5_per", "gdpgr_1519_per","u_1519_per","infl_1519_per","hepat_SDG_per")), na.rm = TRUE))
+
+#MoPED Inclusion
+integrated3<-mutate(integrated3, Inclusion_v9 = rowMeans(select(integrated3, c("pov_1016_per", 'SL.TLF.CACT.FE.ZS_per',"acc_sani_SDG_per","acc_water_SDG_per" , "SI.POV.GINI_per", "EG.ELC.ACCS.ZS_per", "SI.POV.NAHC_per", "SG.GEN.PARL.ZS_per","wom_manage_SDG_per", "FX.OWN.TOTL.FE.ZS_per" , "per_si_allsi.cov_pop_tot_per", "SE.ADT.LITR.FE.ZS_per","you_neet_1317_per","smes_wom_per" )), na.rm = TRUE))
+
+# MoPED Sustainability
+integrated3<-mutate(integrated3, Sustainability_v9 = rowMeans(select(integrated3, c("WWT.new_per", "waste_rate_per", "waste_managed_per", "BHV.new_per", "EN.ATM.CO2E.PP.GD_per")), na.rm = TRUE))
+
+# MoPED Efficiency
+integrated3<-mutate(integrated3, Efficiency_v9 = rowMeans(select(integrated3, c("sdg9_intuse_per", "debt_gdp_IMF_per", "capstock_imf_per", "gov_spe_edu_SDG_per", "balance_imf_per", "taxrev_imf_per")), na.rm = TRUE))
+
+}}}
+
+#Save all the database with raw values and percentile data (worldwide data)
+write.csv(integrated3, paste0(dir_int, "World_SD_values_V5_index_v",version,".csv"), row.names = FALSE)
+```
+
+
+
+# Part II - GRAPHING INDICADORS
+If the composition of the pillars for each version doesn't change, start running the code from here.
+Last update of the indicators list for the two versions: Feb 26, 2021
+
+
+#Dataset creation 
+```{r}
+# Load country dataset to create list of countries per income group that we will used in the loop
+
+country_estimates_global <- read.csv(paste0(dir_int,"World_SD_values_V5_index_v",version,".csv"))
+
+# Lower MICS
+country_estimates <- country_estimates_global %>% filter(income=='Lower middle income')
+lmics <- unique(country_estimates$iso3)
+lmics <- as.character(lmics)
+
+# Low income
+country_estimates <- country_estimates_global %>% filter(income=='Low income')
+lics <- unique(country_estimates$iso3)
+lics <- as.character(lics)
+
+# Upper MICS
+country_estimates <- country_estimates_global %>% filter(income=='Upper middle income')
+umics <- unique(country_estimates$iso3)
+umics <- as.character(umics)
+
+# High Income
+country_estimates <- country_estimates_global %>% filter(income=='High income')
+hics <- unique(country_estimates$iso3)
+hics <- as.character(hics)
+
+```
+
+
+
+
+# Country Percentil dataset: clean and prepare 
+Here we rename the variables of the raw values and the percentile ranking (all variables from the two versions)
+```{r}
+### COUNTRY Percentile DATASET ### 
+###         World              ###
+
+#Load raw and percentile value data generated before 
+country_all <- read.csv(paste0(dir_int,"World_SD_values_V5_index_v",version,".csv"))
+
+
+##country_all$pop_dis<-as.numeric(as.character(country_all$pop_dis))
+##country_all$pop_dis<-format(round(country_all$pop_dis, 2), nsmall = 2)
+
+
+
+if (version!=2){
+
+#Assign names to variables
+#Resilience
+colnames(country_all)<-str_replace(colnames(country_all), "food_sec", "Food Security Index")
+colnames(country_all)<-str_replace(colnames(country_all), "risk_wellbeing", "*Risk to wellbeing %")
+colnames(country_all)<-str_replace(colnames(country_all), "risk_to_assets", "*Risk to asset %")
+colnames(country_all)<-str_replace(colnames(country_all), "pop_dis", "*Population affected by disasters %")
+colnames(country_all)<-str_replace(colnames(country_all), "EN.POP.SLUM.UR.ZS", "*Urban slum population %")
+colnames(country_all)<-str_replace(colnames(country_all), "rain_exp", "*Rainfall shock exposure %")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.STA.TRAF.P5", "*Mortality road traffic injury (per 100,000)")
+colnames(country_all)<-str_replace(colnames(country_all), "gdpgr_1519", "GDP per capita growth (annual %)")
+colnames(country_all)<-str_replace(colnames(country_all), "u_1519", "*Unemployment (% labor force)")
+colnames(country_all)<-str_replace(colnames(country_all), "infl_1519", "*Inflation, consumer prices (annual %)")
+colnames(country_all)<-str_replace(colnames(country_all), "hepat_SDG", "*Hepatitis B prevalence %")
+
+
+#Inclusion
+colnames(country_all)<-str_replace(colnames(country_all), "pov_1016", "*Extreme poverty headcount %")
+colnames(country_all)<-str_replace(colnames(country_all), "SL.TLF.CACT.FE.ZS", "Female labor participation %")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.STA.SMSS.ZS", "Safely managed sanitation %")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.H2O.SMDW.ZS", "Safely managed drinking water %")
+colnames(country_all)<-str_replace(colnames(country_all), "HD.HCI.OVRL", "Human Capital Index")
+colnames(country_all)<-str_replace(colnames(country_all), "SI.POV.GINI", "*Gini Index")
+colnames(country_all)<-str_replace(colnames(country_all), "SE.SEC.ENRR", "Secondary school enrollment %")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.IMM.IDPT", "Immunization DPT %")
+colnames(country_all)<-str_replace(colnames(country_all), "account.t.d.7", "Account ownership (poorest 40%)")
+colnames(country_all)<-str_replace(colnames(country_all), "LGBT_acc", "LGBT Acceptance Index")
+colnames(country_all)<-str_replace(colnames(country_all), "wbl", "Women, Business & Law Index")
+colnames(country_all)<-str_replace(colnames(country_all), "trust_ppl", "Most ppl. can be trusted %")
+colnames(country_all)<-str_replace(colnames(country_all), "ref_idp", "*Refugees & IDPs index")
+colnames(country_all)<-str_replace(colnames(country_all), "sec_aparat", "*Security apparatus index")
+colnames(country_all)<-str_replace(colnames(country_all), "conf_gov", "Confidence in the government")
+
+colnames(country_all)<-str_replace(colnames(country_all), "SI.POV.NAHC", "*Poverty headcount %")
+colnames(country_all)<-str_replace(colnames(country_all), "SG.GEN.PARL.ZS", "Women in national parliaments %")
+colnames(country_all)<-str_replace(colnames(country_all), "wom_manage_SDG", "Women in managerial positions %")
+colnames(country_all)<-str_replace(colnames(country_all), "FX.OWN.TOTL.FE.ZS", "Women account ownership %")
+colnames(country_all)<-str_replace(colnames(country_all), "EG.ELC.ACCS.ZS", "Access to electricity %")
+colnames(country_all)<-str_replace(colnames(country_all), "per_si_allsi.cov_pop_tot", "Population covered by social insurance %")
+colnames(country_all)<-str_replace(colnames(country_all), "SE.ADT.LITR.FE.ZS", "Women literacy rate %")
+colnames(country_all)<-str_replace(colnames(country_all), "acc_sani_SDG", "Basic access to sanitation %")
+colnames(country_all)<-str_replace(colnames(country_all), "acc_water_SDG", "Basic access to water %")
+colnames(country_all)<-str_replace(colnames(country_all), "you_neet_1317", "Youth NEET %")
+colnames(country_all)<-str_replace(colnames(country_all), "smes_wom", "SMEs owned by women %")
+
+
+#Sustainability
+
+colnames(country_all)<-str_replace(colnames(country_all), "NY.ADJ.SVNG.GN.ZS", "Adjusted net savings %")
+colnames(country_all)<-str_replace(colnames(country_all), "EN.ATM.PM25.MC.M3", "*PM2.5 mean annual exposure (\U00B5g/m3)")
+colnames(country_all)<-str_replace(colnames(country_all), "EG.FEC.RNEW.ZS", "Renewable energy consumption %")
+colnames(country_all)<-str_replace(colnames(country_all), "ER.H2O.INTR.PC", "Renewable internal freshwater (m3 pc)")
+colnames(country_all)<-str_replace(colnames(country_all), "wat_qua", "Water Quality SDG 6.3")
+colnames(country_all)<-str_replace(colnames(country_all), "WWT.new", "Wastewater treatment capacity %")
+colnames(country_all)<-str_replace(colnames(country_all), "waste_managed", "Waste properly managed %")
+colnames(country_all)<-str_replace(colnames(country_all), "waste_rate", "*Municipal solid waste (kg/pc/day)")
+colnames(country_all)<-str_replace(colnames(country_all), "BHV.new", "Biodiversity Habitat Index")
+colnames(country_all)<-str_replace(colnames(country_all), "FSH.new", "Fisheries Index")
+colnames(country_all)<-str_replace(colnames(country_all), "GIB.new", "GHG intensity growth rate")
+colnames(country_all)<-str_replace(colnames(country_all), "EN.ATM.CO2E.PC", "*CO2 emissions (MT pc)")
+colnames(country_all)<-str_replace(colnames(country_all), "forest_loss", "*Forest loss %")
+
+#colnames(country_all)<-str_replace(colnames(country_all), "DT.TDS.DECT.GN.ZS", "Total debt service")
+
+colnames(country_all)<-str_replace(colnames(country_all), "EN.ATM.CO2E.PP.GD", "*CO2 emissions (kg/$GDP)")
+
+
+
+#Inclusion
+colnames(country_all)<-str_replace(colnames(country_all), "agri_land", "Agri. land productivity ($/ha)")
+colnames(country_all)<-str_replace(colnames(country_all), "agri_value", "Agri. value added per worker")
+colnames(country_all)<-str_replace(colnames(country_all), "gini_ghg", "Total GNI/GHG emissions")
+colnames(country_all)<-str_replace(colnames(country_all), "gov_effect", "Governance effectiveness")
+colnames(country_all)<-str_replace(colnames(country_all), "cont_corr", "Control of corruption")
+#colnames(country_all)<-str_replace(colnames(country_all), "reg_qua", "Regulatory quality")
+colnames(country_all)<-str_replace(colnames(country_all), "lpi_score", "Logistic Performance Index")
+colnames(country_all)<-str_replace(colnames(country_all), "sdg9_intuse", "Pop. using internet %")
+colnames(country_all)<-str_replace(colnames(country_all), "lpi_score", "Logistic Performance Index")
+colnames(country_all)<-str_replace(colnames(country_all), "Tenure.insecurity", "*Tenure insecurity %")
+colnames(country_all)<-str_replace(colnames(country_all), "water_efficiency_FAO", "Water use efficiency (USD/m3)")
+colnames(country_all)<-str_replace(colnames(country_all), "water_efficiency_ceo", "Water use efficiency (GNI/m3)")
+
+
+colnames(country_all)<-str_replace(colnames(country_all), "gov_spe_edu_SDG", "Gov spending on essential services, education %")
+colnames(country_all)<-str_replace(colnames(country_all), "debt_gdp_IMF", "*Gross debt (% GDP)")
+colnames(country_all)<-str_replace(colnames(country_all), "balance_imf", "Budget balance (% GDP)")
+colnames(country_all)<-str_replace(colnames(country_all), "taxrev_imf", "Tax revenues (% tot revenues)")
+colnames(country_all)<-str_replace(colnames(country_all), "capstock_imf", "*Capital stock (% GDP)")
+
+} else {
+
+###V2 Names include subcategory for alphabetical order  
+  
+#Resilience
+colnames(country_all)<-str_replace(colnames(country_all), "glob_hunger_index", "(R2) *Global Hunger Index")
+colnames(country_all)<-str_replace(colnames(country_all), "terror", "(R2) *Deaths from conflict and terrorism (per 100,000)")
+colnames(country_all)<-str_replace(colnames(country_all), "pop_dis", "(R1) *Population affected by disasters %")
+colnames(country_all)<-str_replace(colnames(country_all), "pop_slums_SDG", "(R2) *Proportion of urban population living in slums")
+colnames(country_all)<-str_replace(colnames(country_all), "rain_exp", "(R1) *Rainfall shock exposure %")
+colnames(country_all)<-str_replace(colnames(country_all), "pop_epid", "(R2) *Population exposed to epidemics (per 100,000)")
+colnames(country_all)<-str_replace(colnames(country_all), "heal_01_NDG", "(R3) *Projected change of deaths from climate change induced diseases")
+colnames(country_all)<-str_replace(colnames(country_all), "habi_01_NDG", "(R3) *Projected change of warm periods")
+colnames(country_all)<-str_replace(colnames(country_all), "habi_02_NDG", "(R3) *Projected change of flood hazard")
+colnames(country_all)<-str_replace(colnames(country_all), "heal_03_NDG", "(R4) *Dependency on external resource for health services")
+colnames(country_all)<-str_replace(colnames(country_all), "food_03_NDG", "(R4) *Food import dependency")
+colnames(country_all)<-str_replace(colnames(country_all), "infr_02_NDG", "(R3) *Projected change of sea level rise impacts")
+colnames(country_all)<-str_replace(colnames(country_all), "infr_03_NDG", "(R4) *Dependency on imported energy")
+colnames(country_all)<-str_replace(colnames(country_all), "displaced", "(R1) *IDPs due to natural disasters (cases per 100,000)")
+colnames(country_all)<-str_replace(colnames(country_all), "wat_stress_SDG", "(R1) *Water Stress SDG 6.4")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.MED.PHYS.ZS", "(R4) Physicians (per 1,000 people)")
+
+
+#Inclusion
+colnames(country_all)<-str_replace(colnames(country_all), "pov_1016", "(I1) *Extreme poverty headcount %")
+colnames(country_all)<-str_replace(colnames(country_all), "SL.TLF.CACT.FE.ZS", "(I2) Female labor participation %")
+colnames(country_all)<-str_replace(colnames(country_all), "HD.HCI.OVRL", "(I3) Human Capital Index")
+colnames(country_all)<-str_replace(colnames(country_all), "SI.POV.GINI", "(I1) *Gini Index")
+colnames(country_all)<-str_replace(colnames(country_all), "SE.SEC.ENRR", "(I3) Secondary school enrollment %")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.IMM.IDPT", "(I3) Immunization DPT %")
+colnames(country_all)<-str_replace(colnames(country_all), "account.t.d.7", "(I1) Account ownership (poorest 40%)")
+colnames(country_all)<-str_replace(colnames(country_all), "LGBT_acc", "(I2) LGBT Acceptance Index")
+colnames(country_all)<-str_replace(colnames(country_all), "wbl", "(I2) Women, Business & Law Index")
+colnames(country_all)<-str_replace(colnames(country_all), "ref_idp", "(I1) *Refugees & IDPs index")
+colnames(country_all)<-str_replace(colnames(country_all), "SG.GEN.PARL.ZS", "(I2) Women in national parliaments %")
+colnames(country_all)<-str_replace(colnames(country_all), "EG.ELC.ACCS.ZS", "(I4) Access to electricity %")
+colnames(country_all)<-str_replace(colnames(country_all), "acc_sani_SDG", "(I4) Basic access to sanitation %")
+colnames(country_all)<-str_replace(colnames(country_all), "acc_water_SDG", "(I4) Basic access to water %")
+colnames(country_all)<-str_replace(colnames(country_all), "rai", "(I4) Rural Access Index")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.UHC.SRVS.CV.XD", "(I3) Universal health coverage (UHC) index %")
+
+
+
+#Sustainability
+colnames(country_all)<-str_replace(colnames(country_all), "EN.ATM.PM25.MC.M3", "(S1) *PM2.5 mean annual exposure (\U00B5g/m3)")
+colnames(country_all)<-str_replace(colnames(country_all), "forest_loss", "(S4) *Forest loss %")
+colnames(country_all)<-str_replace(colnames(country_all), "EG.FEC.RNEW.ZS", "(S3) Renewable energy consumption %")
+colnames(country_all)<-str_replace(colnames(country_all), "wat_qua", "(S3) Water Quality SDG 6.3")
+colnames(country_all)<-str_replace(colnames(country_all), "WWT.new", "(S2) Wastewater treatment capacity %")
+colnames(country_all)<-str_replace(colnames(country_all), "waste_managed", "(S2) Waste properly managed %")
+colnames(country_all)<-str_replace(colnames(country_all), "waste_rate", "(S2) *Municipal solid waste (kg/pc/day)")
+colnames(country_all)<-str_replace(colnames(country_all), "BHV.new", "(S4) Biodiversity Habitat Index")
+colnames(country_all)<-str_replace(colnames(country_all), "FSH.new", "(S4) Fisheries Index")
+colnames(country_all)<-str_replace(colnames(country_all), "ghg_pc", "(S1) *GHG emissions per capita (% change)")
+colnames(country_all)<-str_replace(colnames(country_all), "EN.ATM.CO2E.PC", "(S1) *CO2 emissions (MT pc)")
+colnames(country_all)<-str_replace(colnames(country_all), "ecos_04_NDG", "(S3) *Ecological Footprint")
+colnames(country_all)<-str_replace(colnames(country_all), "fao_withdraw", "(S3) *Water withdrawal per capita (m3/year pc)")
+colnames(country_all)<-str_replace(colnames(country_all), "chloroph_SDG", "(S4) *Chlorophyll-a deviations in coastal water %")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.STA.AIRP.P5", "(S1) *Mortality due to air pollution (per 100,000)")
+colnames(country_all)<-str_replace(colnames(country_all), "SH.STA.WASH.P5", "(S2) *Mortality due to unsafe WASH services (per 100,000)")
+
+
+#Efficiency
+colnames(country_all)<-str_replace(colnames(country_all), "agri_land", "(E4) Agri. land productivity ($/ha)")
+colnames(country_all)<-str_replace(colnames(country_all), "agri_value", "(E1) Agri. value added per worker")
+colnames(country_all)<-str_replace(colnames(country_all), "gini_ghg", "(E4) Total GNI/GHG emissions")
+colnames(country_all)<-str_replace(colnames(country_all), "gov_effect", "(E2) Governance effectiveness")
+colnames(country_all)<-str_replace(colnames(country_all), "cont_corr", "(E2) Control of corruption")
+colnames(country_all)<-str_replace(colnames(country_all), "reg_qua", "(E2) Regulatory quality")
+colnames(country_all)<-str_replace(colnames(country_all), "lpi_score", "(E1) Logistic Performance Index")
+colnames(country_all)<-str_replace(colnames(country_all), "IT.NET.USER.ZS", "(E3) Individuals using internet %")
+colnames(country_all)<-str_replace(colnames(country_all), "IT.CEL.SETS.P2", "(E3) Mobile cellular subscriptions (per 100 people)")
+colnames(country_all)<-str_replace(colnames(country_all), "rule_law", "(E2) Rule of law")
+colnames(country_all)<-str_replace(colnames(country_all), "rapid_trans", "(E3) Rapid transit to resident ratio (km/million)")
+colnames(country_all)<-str_replace(colnames(country_all), "energ_int", "(E4) *Energy intensity (% change)")
+colnames(country_all)<-str_replace(colnames(country_all), "patents", "(E1) Patents (per 100,000 people)")  
+colnames(country_all)<-str_replace(colnames(country_all), "dai", "(E1) Digital Penetration Index")  
+colnames(country_all)<-str_replace(colnames(country_all), "water_efficiency_ceo", "(E4) Water productivity (GNI/m3)")
+colnames(country_all)<-str_replace(colnames(country_all), "IS.SHP.GCNW.XQ", "(E3) Shipping connectivity index")
+
+}
+
+
+
+
+```
+
+# Get the aggregate values of median/sd for each income group (to use in the table comparison we will create in excel)
+```{r}
+options(scipen=999) #remove scientific notation
+
+#Short income group name for graphs
+country_all$income_red <- ifelse(country_all$income == "High income", "HIC",
+                                ifelse(country_all$income ==  "Upper middle income", 'UMIC',
+                                       ifelse(country_all$income ==  "Lower middle income", 'LMIC',
+                                               ifelse(country_all$income ==  "Low income", 'LIC', 'Other'))))
+
+#Aspirational income group: income group "one level up"
+country_all$income_aspiration <- ifelse(country_all$income_red == "HIC", "HIC",
+                                ifelse(country_all$income_red == 'UMIC', "HIC", 
+                                       ifelse(country_all$income_red == 'LMIC', 'UMIC',
+                                               ifelse(country_all$income_red == 'LIC', 'LMIC', 'Other'))))
+
+
+#Short regional group for graphs
+country_all$region_red <- ifelse(country_all$region == "South Asia", "SA",
+                                ifelse(country_all$region ==  "Europe & Central Asia", 'ECA',
+                                       ifelse(country_all$region ==  "Middle East & North Africa", 'MENA',
+                                              ifelse(country_all$region ==  "Sub-Saharan Africa", 'SSA',
+                                                     ifelse(country_all$region ==  "Latin America & Caribbean", 'LAC',
+                                                        ifelse(country_all$region ==  "East Asia & Pacific", 'EAP',  
+                                               ifelse(country_all$region ==  "North America", 'NAC', 'Other')))))))
+
+
+# MEDIAN
+income_median <- country_all%>%  group_by(region_red)%>%
+  select(-matches('_per'))%>% dplyr::summarise(across(where(is.numeric), list(median= ~median(., na.rm = T)), .names = "{col}"))
+income_median<- reshape2::melt(income_median, id.vars=c("region_red"), variable.name="indicator", value.name="median")
+
+#MEAN
+income_mean <- country_all%>%group_by(region_red)%>%
+  select(-matches('_per'))%>% dplyr::summarise(across(where(is.numeric), list(mean= ~mean(., na.rm = T)), .names = "{col}"))
+income_mean<- reshape2::melt(income_mean, id.vars=c("region_red"), variable.name="indicator", value.name="mean")
+
+#SD
+income_sd <- country_all%>% group_by(region_red)%>%
+  select(-matches('_per'))%>% dplyr::summarise(across(where(is.numeric), list(sd= ~sd(., na.rm = T)), .names = "{col}"))
+income_sd<- reshape2::melt(income_sd, id.vars=c("region_red"), variable.name="indicator", value.name="sd")
+
+#Merge MEAN, MEDIAN, SD 
+income_info <- merge(income_mean, income_median) %>%  merge(income_sd)
+
+#Get ranges for SD  (Mean) - Later use to estimate if the countries value is one standar deviation above or below, or within one SD of the Mean
+income_info$sd_mean_up<-income_info$mean + income_info$sd
+income_info$sd_mean_down<-income_info$mean - income_info$sd
+
+##Get ranges for SD  (Median) -Later use to estimate if the countries value is one standar deviation above or below, or within one SD of the Median
+income_info$sd_median_up<-income_info$median + income_info$sd
+income_info$sd_median_down<-income_info$median - income_info$sd
+```
+
+# Prepare data for PERCENTILE RANKING BAR GRAPH
+```{r}
+#Duplicate a version of country_all for transformation- country_all needs to remain the same to be use in the percentile rank graph
+
+country_all2<-country_all
+
+#Select ranking values
+country_all2<-country_all2%>% select(country, iso3, income_red, region_red, paste0("Resilience_v",version), paste0("Inclusion_v",version), paste0("Sustainability_v",version), paste0("Efficiency_v",version))
+
+#Transform to long format for graph
+country_long_complete <- reshape2::melt(country_all2,
+        # ID variables - all the variables to keep but not split apart on
+    id.vars=c("country", "iso3","income_red", "region_red"),
+    variable.name="pillar",
+    value.name="percentil"
+)
+
+#Get the median value for income group & transform to long format - this would be use for the graph bars 
+median_income<- country_all2 %>%
+  group_by(income_red)%>%
+    dplyr::summarise(across(where(is.numeric), function(x){ median(x, na.rm=TRUE)}))
+
+median_income_long <- reshape2::melt(median_income,
+        # ID variables - all the variables to keep but not split apart on
+    id.vars=c("income_red"),
+    variable.name="pillar",
+    value.name="median_income")
+
+#Join data 
+country_long_complete<-left_join(country_long_complete, median_income_long, by=c("pillar", "income_red"))
+```
+
+# From this point the selection between versions will affect the outcomes 
+
+#Function for PERCENTILE RANKING BAR GRAPH -
+```{r}
+for(i in country){
+  #Duplicate  a version of country long for subsetting 
+  country_long<-country_long_complete
+
+  country_long<-country_long%>% filter(str_detect(pillar, paste0("v",version)))
+  median_income_filter<-median_income_long%>% filter(str_detect(pillar, paste0("v",version)))
+
+
+#Get varible to identify the country in the graph
+country_long<-country_long%>%
+  mutate(country_ind = ifelse(iso3 == i , 1, 0))
+
+##Get regional group
+regional_group_df<-country_long%>%
+  filter(iso3 == i)%>%
+  select(region_red)
+
+regional_group<-regional_group_df[1,1]
+
+#Filter country and arrange percentiles values for graph (since it is a facet graph, percentile arrangement gets messy)
+#Establish regional group beforehand
+country_long<-country_long%>%
+  dplyr::filter(region_red=="MENA")%>%
+  dplyr::filter(!is.na(percentil))%>%
+  ungroup() %>%
+  arrange(pillar, (desc(percentil)))%>%
+  mutate(r = row_number())%>%
+  mutate(pillar_name = str_replace(pillar, "_v0|_v1|_v2|_v9", ""))
+
+country_long$pillar_name_f<- factor(country_long$pillar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
+
+#Once filtered by region, get regional median graph and for the next graph  
+country_long<-country_long%>%
+  group_by(pillar)%>%
+  mutate(median_regional= median(percentil, na.rm=T))
+
+# prepare regional median for next graph 
+regional_median<-country_long%>%
+  group_by(pillar)%>%
+  dplyr::summarise(percentil_median= median(percentil, na.rm=T))%>%
+  mutate(group = "MENA")%>%
+  select(group, everything())
+
+
+#Rename col, add iso3 and merge bases
+
+colnames(median_income_filter)<-c("group", "pillar", "percentil_median")
+
+
+country_median_filter<-country_long_median%>%
+  dplyr::select(country, pillar, percentil, iso3)
+colnames(country_median_filter)<-c("group",  "pillar", "percentil_median", "iso3")
+
+
+#Merge regional median/income median/country median
+graph_bar2<-rbind(median_income_filter, regional_median)
+
+
+#Prepare for graph
+graph_bar2<-graph_bar2%>%
+  dplyr::filter(!is.na(percentil_median))%>%
+  ungroup() %>%
+  arrange(pillar, (desc(percentil_median)))%>%
+  mutate(r = row_number())%>%
+  mutate(pillar_name = str_replace(pillar, "_v0|_v1|_v2|_v9", ""))
+
+graph_bar2$pillar_name_f<- factor(graph_bar2$pillar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
+
+graph_bar2<-graph_bar2%>%
+  mutate(mena = ifelse(group == "MENA" , 1, 0))
+
+graph2  <-  ggplot(graph_bar2, aes(x = r, y = percentil_median*100, fill = pillar_name_f, color = as.factor(mena))) + 
+  geom_col(size=1.2, alpha=0.7)+
+  #Red line (m)
+  geom_hline( yintercept = 50 , color="red3", size=1)+ 
+  facet_grid(~pillar_name_f, scales = "free")+
+  #scale_y_continuous(labels = value, breks= value)+
+    labs(y = "Median percentile rank",
+  title = "")+
+theme_minimal()+
+  theme(strip.text.x = element_text(size = 19, face = "bold"),
+  axis.text.y = element_text(size = 16, hjust = .5, vjust = .5),
+  plot.title=element_text(size=14, face = "bold"),
+               axis.title.x=element_blank(),
+  axis.text.x = element_text(size= 14),
+                 legend.position = "none",
+  panel.grid.minor = element_blank(), 
+  panel.grid.major = element_blank())+
+  scale_fill_manual(values = c("darkcyan", "red2" ,"goldenrod1", "darkmagenta"))+
+  scale_color_manual(values=c("grey25", "green3"))+
+  scale_x_continuous(breaks = graph_bar2$r, labels = str_wrap(graph_bar2$group, width = 7)) +
+  geom_text(aes(x=r, y=(percentil_median*100)+3 , label= as.integer(percentil_median*100)), color="black",alpha=1, size=6, inherit.aes = FALSE )
+  
+ggsave(graph2, file=paste0(dir_out, group,'/',"MENA_barplot_per_group_v",version,".pdf"), width=25, height=10)
+
+
+## Replicate graph with world regions instead of income groups
+
+
+#Get the median value for income group & transform to long format - this would be use for the graph bars 
+median_reg<- country_all2 %>%
+  group_by(region_red)%>%
+    dplyr::summarise(across(where(is.numeric), function(x){ median(x, na.rm=TRUE)}))
+
+median_reg_long <- reshape2::melt(median_reg,
+        # ID variables - all the variables to keep but not split apart on
+    id.vars=c("region_red"),
+    variable.name="pillar",
+    value.name="median_income")
+
+colnames(median_reg_long)<-c("group", "pillar", "percentil_median")
+
+
+#Merge regional median/income median/country median
+graph_bar3<-median_reg_long
+
+
+graph_bar3<-graph_bar3%>%
+  mutate(mena = ifelse(group == "MENA" , 1, 0))
+
+
+
+#Prepare for graph
+graph_bar3<-graph_bar3%>%
+  dplyr::filter(!is.na(percentil_median))%>%
+  ungroup() %>%
+  arrange(pillar, (desc(percentil_median)))%>%
+  mutate(r = row_number())%>%
+  mutate(pillar_name = str_replace(pillar, "_v0|_v1|_v2|_v9", ""))
+
+graph_bar3$pillar_name_f<- factor(graph_bar3$pillar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
+
+graph_bar3<-graph_bar3%>%
+  mutate(mena = ifelse(group == "MENA" , 1, 0))
+
+graph3  <-  ggplot(graph_bar3, aes(x = r, y = percentil_median*100, fill = pillar_name_f, color = as.factor(mena))) + 
+  geom_col(size=1.2, alpha=0.7)+
+  #Red line (m)
+  geom_hline( yintercept = 50 , color="red3", size=1)+ 
+  facet_grid(~pillar_name_f, scales = "free")+
+  #scale_y_continuous(labels = value, breks= value)+
+    labs(y = "Median percentile rank",
+  title = "")+
+theme_minimal()+
+  theme(strip.text.x = element_text(size = 19, face = "bold"),
+  axis.text.y = element_text(size = 16, hjust = .5, vjust = .5),
+  plot.title=element_text(size=14, face = "bold"),
+               axis.title.x=element_blank(),
+  axis.text.x = element_text(size= 14),
+                 legend.position = "none",
+  panel.grid.minor = element_blank(), 
+  panel.grid.major = element_blank())+
+  scale_fill_manual(values = c("darkcyan", "red2" ,"goldenrod1", "darkmagenta"))+
+  scale_color_manual(values=c("grey25", "green3"))+
+  scale_x_continuous(breaks = graph_bar3$r, labels = str_wrap(graph_bar3$group, width = 7)) +
+  geom_text(aes(x=r, y=(percentil_median*100)+3 , label= as.integer(percentil_median*100)), color="black",alpha=1, size=6, inherit.aes = FALSE )
+  
+ggsave(graph3, file=paste0(dir_out, group,'/',"MENA_barplot_per_region_v",version,".pdf"), width=25, height=10)
+
+
+
+
+## Replicate graph with sub-regions instead of income groups
+
+country_all3 <- country_all2 
+
+country_all3 <- country_all3 %>%
+  filter(region_red=="MENA")
+
+subreg <- c("North Africa","Bab-el-Mandeb","North Africa","Other","Mashreq","Other","Mashreq","GCC","Mashreq",
+            "North Africa","Other","North Africa","GCC","GCC","GCC","Mashreq","North Africa",
+            "GCC","Mashreq","Bab-el-Mandeb")
+
+country_all3 <- cbind(country_all3,subreg)
+
+country_all3 <- country_all3 %>%
+  filter(subreg!="Other")
+
+
+#Get the median value for income group & transform to long format - this would be use for the graph bars 
+median_subreg<- country_all3 %>%
+  group_by(subreg)%>%
+    dplyr::summarise(across(where(is.numeric), function(x){ median(x, na.rm=TRUE)}))
+
+
+median_subreg_long <- reshape2::melt(median_subreg,
+        # ID variables - all the variables to keep but not split apart on
+    id.vars=c("subreg"),
+    variable.name="pillar",
+    value.name="median_income")
+
+
+
+colnames(median_subreg_long)<-c("group", "pillar", "percentil_median")
+
+
+#Merge regional median/income median/country median
+graph_bar4<- rbind(median_subreg_long,regional_median[,1:3])
+
+
+graph_bar4<-graph_bar4%>%
+  mutate(mena = ifelse(group == "MENA" , 1, 0))
+
+
+
+#Prepare for graph
+graph_bar4<-graph_bar4%>%
+  dplyr::filter(!is.na(percentil_median))%>%
+  ungroup() %>%
+  arrange(pillar, (desc(percentil_median)))%>%
+  mutate(r = row_number())%>%
+  mutate(pillar_name = str_replace(pillar, "_v0|_v1|_v2|_v9", ""))
+
+graph_bar4$pillar_name_f<- factor(graph_bar4$pillar_name, levels= c("Resilience", "Inclusion", "Sustainability", "Efficiency"))
+
+graph_bar4<-graph_bar4%>%
+  mutate(mena = ifelse(group == "MENA" , 1, 0))
+
+graph4  <-  ggplot(graph_bar4, aes(x = r, y = percentil_median*100, fill = pillar_name_f, color = "black")) + 
+  geom_col(size=1.2, alpha=0.7)+
+  #Red line (m)
+  geom_hline( yintercept = 50 , color="red3", size=1)+ 
+  facet_grid(~pillar_name_f, scales = "free")+
+  #scale_y_continuous(labels = value, breks= value)+
+    labs(y = "Median percentile rank",
+  title = "")+
+theme_minimal()+
+  theme(strip.text.x = element_text(size = 19, face = "bold"),
+  axis.text.y = element_text(size = 16, hjust = .5, vjust = .5),
+  plot.title=element_text(size=14, face = "bold"),
+               axis.title.x=element_blank(),
+  axis.text.x = element_text(size= 14),
+                 legend.position = "none",
+  panel.grid.minor = element_blank(), 
+  panel.grid.major = element_blank())+
+  scale_fill_manual(values = c("darkcyan", "red2" ,"goldenrod1", "darkmagenta"))+
+  scale_color_manual(values=c("grey25", "green3"))+
+  scale_x_continuous(breaks = graph_bar4$r, labels = str_wrap(graph_bar4$group, width = 7)) +
+  geom_text(aes(x=r, y=(percentil_median*100)+3 , label= as.integer(percentil_median*100)), color="black",alpha=1, size=6, inherit.aes = FALSE )
+  
+ggsave(graph4, file=paste0(dir_out, group,'/',"MENA_barplot_per_subregion_v",version,".pdf"), width=25, height=10)
+
+
+
+
+
+
+} 
+
+```
+
+
+
+
+
+
+# Loop to prepare data for SCORE PILLARS COMPARISON GRAPH - CIRCULAR (PER PILLARS)
+```{r}
+### COUNTRY Percentile DATASET ###
+
+
+median_reg_indi<- country_all %>%
+  group_by(region_red)%>%
+    dplyr::summarise(across(where(is.numeric), function(x){ median(x, na.rm=TRUE)}))
+
+median_reg_indi<-median_reg_indi%>%
+  filter(region_red == "MENA")
+
+
+atatat <- data.frame("MENA region","MENA","Upper middle income","Middle East & North Africa","UMIC","HIC")
+colnames(atatat) <- c("country","iso3","income","region","income_red","income_aspiration")
+
+median_reg_indi <- cbind(median_reg_indi,atatat)
+
+
+country_all <- rbind(country_all, median_reg_indi)
+
+country <- "MENA"
+
+for(i in country){
+
+country_tot<-country_all  
+country_tot<- country_tot[country_tot$iso3 == i, ]
+country_percent<-country_tot %>% select(matches('_per'))
+country_percent <- as.data.frame(t(as.matrix(country_percent)))
+country_percent <- country_percent %>% rownames_to_column("indicator")
+colnames(country_percent)<-c("indicator", "percentil")
+country_percent$indicator<-str_replace(country_percent$indicator, "_per", "")
+
+
+#### Country Data Raw values ####
+
+country_values<-country_tot %>% select(-matches('_per'))
+country_values <- as.data.frame(t(as.matrix(country_values)))
+country_values <- country_values %>% rownames_to_column("indicator")
+colnames(country_values)<-c("indicator", "raw_value")
+
+
+#Set indicators categories
+
+efficiency<-c("Agri. land productivity ($/ha)", "Agri. value added per worker", "Total GNI/GHG emissions","Governance effectiveness", "Control of corruption", "Logistic Performance Index", "Pop. using internet %", "Water use efficiency (USD/m3)", "Logistic Performance Index", "*Tenure insecurity %", "Water use efficiency (USD/m3)", "Water use efficiency (GNI/m3)", "Gov spending on essential services, education %", "*Gross debt (% GDP)", "Budget balance (% GDP)", "Tax revenues (% tot revenues)", "*Capital stock (% GDP)","(E4) Agri. land productivity ($/ha)", "(E1) Agri. value added per worker", "(E4) Total GNI/GHG emissions", "(E2) Governance effectiveness", "(E2) Control of corruption", "(E2) Regulatory quality", "(E1) Logistic Performance Index", "(E3) Individuals using internet %", "(E3) Mobile cellular subscriptions (per 100 people)", "(E2) Rule of law", "(E3) Rapid transit to resident ratio (km/million)", "(E4) *Energy intensity (% change)", "(E1) Patents (per 100,000 people)", "(E1) Digital Penetration Index", "(E4) Water productivity (GNI/m3)","(E3) Shipping connectivity index")
+
+
+sustainability<-c("Adjusted net savings %", "*PM2.5 mean annual exposure (\U00B5g/m3)", "Renewable energy consumption %", "Renewable internal freshwater (m3 pc)", "Water Quality SDG 6.3", "Wastewater treatment capacity %", "Waste properly managed %", "*Municipal solid waste (kg/pc/day)", "Biodiversity Habitat Index", "Fisheries Index", "GHG intensity growth rate", "*CO2 emissions (MT pc)", "*Forest loss %", "*CO2 emissions (kg/$GDP)","(S1) *PM2.5 mean annual exposure (\U00B5g/m3)", "(S4) *Forest loss %", "(S3) Renewable energy consumption %","(S2) Wastewater treatment capacity %","(S2) Waste properly managed %","(S2) *Municipal solid waste (kg/pc/day)","(S4) Biodiversity Habitat Index","(S4) Fisheries Index", "(S1) *GHG emissions per capita (% change)", "(S1) *CO2 emissions (MT pc)","(S3) *Ecological Footprint","(S3) *Water withdrawal per capita (m3/year pc)","(S4) *Chlorophyll-a deviations in coastal water %","(S1) *Mortality due to air pollution (per 100,000)","(S2) *Mortality due to unsafe WASH services (per 100,000)", "(S3) Water Quality SDG 6.3")
+
+inclusion<-c("*Extreme poverty headcount %", "*Gini Index", "Immunization DPT %", "Safely managed sanitation %", "Safely managed drinking water %", "Immunization DPT %",  "Secondary school enrollment %", "Human Capital Index", "Account ownership (poorest 40%)", "Female labor participation %", "Women, Business & Law Index",  "LGBT Acceptance Index",  "Most ppl. can be trusted %", "*Refugees & IDPs index", "*Security apparatus index", "Confidence in the government",  "*Poverty headcount %", "Women in national parliaments %", "Women in managerial positions %", "Women account ownership %", "Access to electricity %", "Population covered by social insurance %", "Women literacy rate %", "Youth NEET %","SMEs owned by women %", "(I1) *Extreme poverty headcount %", "SL.TLF.CACT.FE.ZS", "(I2) Female labor participation %", "(I3) Human Capital Index", "(I1) *Gini Index","(I3) Secondary school enrollment %", "(I3) Immunization DPT %", "(I1) Account ownership (poorest 40%)","(I2) LGBT Acceptance Index"
+, "(I2) Women, Business & Law Index", "(I1) *Refugees & IDPs index", "(I2) Women in national parliaments %", "(I4) Access to electricity %", "(I4) Basic access to sanitation %", "(I4) Basic access to water %", "(I4) Rural Access Index", "(I3) Universal health coverage (UHC) index %", "Basic access to sanitation %", "Basic access to water %" )
+
+resilience<-c("Food Security Index", "*Risk to wellbeing %", "*Risk to asset %","*Population affected by disasters %", "*Rainfall shock exposure %", "*Urban slum population %","*Mortality road traffic injury (per 100,000)", "GDP per capita growth (annual %)", "*Unemployment (% labor force)",  "*Inflation, consumer prices (annual %)", "*Hepatitis B prevalence %","(R2) *Global Hunger Index", "(R2) *Deaths from conflict and terrorism (per 100,000)", "(R1) *Population affected by disasters %","(R2) *Proportion of urban population living in slums", "(R1) *Rainfall shock exposure %", "(R2) *Population exposed to epidemics (per 100,000)", "(R3) *Projected change of deaths from climate change induced diseases", "habi_01_NDG", "(R3) *Projected change of warm periods", "(R3) *Projected change of flood hazard", "(R4) *Dependency on external resource for health services", "(R4) *Food import dependency", "(R3) *Projected change of sea level rise impacts", "(R4) *Dependency on imported energy", "(R1) *IDPs due to natural disasters (cases per 100,000)", "(R1) *Water Stress SDG 6.4", "(R4) Physicians (per 1,000 people)")
+
+
+#Assign categories (number set to appear in the RISE order in the graph)
+
+country_percent$category <- ifelse(country_percent$indicator %in% efficiency, '2.Efficiency',
+                                   ifelse(country_percent$indicator %in% sustainability, '3.Sustainability',
+                                          ifelse(country_percent$indicator %in% resilience, '4.Resilience', 
+                                                 ifelse(country_percent$indicator %in% inclusion, '1.Inclusion', 'Other'))))
+
+country_percent <- country_percent%>% filter(category!='Other') 
+
+#Join percentage and raw value
+country_percent <-left_join(country_percent, country_values, by="indicator")
+country_percent$raw_value<-as.numeric(as.character(country_percent$raw_value))
+country_percent$raw_value<-format(round(country_percent$raw_value, 2), nsmall = 2)
+
+
+# Format score data for graphs
+#country_percent <- country_percent[,c(3,1,2,4)]
+country_percent$percentil <- as.numeric(as.character(country_percent$percentil))
+country_percent$percentil<-country_percent$percentil*100
+country_percent <- country_percent[order(country_percent$category),]
+
+#create first databases for percentile ranking (global)
+
+country_percent$percentil<-as.integer(country_percent$percentil)
+country_percent<-country_percent%>% select(indicator, percentil, raw_value, category)
+write.csv(country_percent,paste0(dir_out, group,'/',i,"_percentil_v",version,".csv"), row.names = FALSE)
+}
+
+
+
+### COUNTRY SCORE DATASET ###
+
+country_score <- read.csv(paste0(dir_int, "DB_SD_all_score.csv"))
+
+
+#Subset Country score to include only variables for the version in question
+
+country_score <- subset(country_score, select = c(base,v2))
+
+
+###V2 Names include subcategory for alphabetical order  
+  
+#Resilience
+colnames(country_score)<-str_replace(colnames(country_score), "glob_hunger_index", "(R2) *Global Hunger Index")
+colnames(country_score)<-str_replace(colnames(country_score), "terror", "(R2) *Deaths from conflict and terrorism (per 100,000)")
+colnames(country_score)<-str_replace(colnames(country_score), "pop_dis", "(R1) *Population affected by disasters %")
+colnames(country_score)<-str_replace(colnames(country_score), "pop_slums_SDG", "(R2) *Proportion of urban population living in slums")
+colnames(country_score)<-str_replace(colnames(country_score), "rain_exp", "(R1) *Rainfall shock exposure %")
+colnames(country_score)<-str_replace(colnames(country_score), "pop_epid", "(R2) *Population exposed to epidemics (per 100,000)")
+colnames(country_score)<-str_replace(colnames(country_score), "heal_01_NDG", "(R3) *Projected change of deaths from climate change induced diseases")
+colnames(country_score)<-str_replace(colnames(country_score), "habi_01_NDG", "(R3) *Projected change of warm periods")
+colnames(country_score)<-str_replace(colnames(country_score), "habi_02_NDG", "(R3) *Projected change of flood hazard")
+colnames(country_score)<-str_replace(colnames(country_score), "heal_03_NDG", "(R4) *Dependency on external resource for health services")
+colnames(country_score)<-str_replace(colnames(country_score), "food_03_NDG", "(R4) *Food import dependency")
+colnames(country_score)<-str_replace(colnames(country_score), "infr_02_NDG", "(R3) *Projected change of sea level rise impacts")
+colnames(country_score)<-str_replace(colnames(country_score), "infr_03_NDG", "(R4) *Dependency on imported energy")
+colnames(country_score)<-str_replace(colnames(country_score), "displaced", "(R1) *IDPs due to natural disasters (cases per 100,000)")
+colnames(country_score)<-str_replace(colnames(country_score), "wat_stress_SDG", "(R1) *Water Stress SDG 6.4")
+colnames(country_score)<-str_replace(colnames(country_score), "SH.MED.PHYS.ZS", "(R4) Physicians (per 1,000 people)")
+
+
+#Inclusion
+colnames(country_score)<-str_replace(colnames(country_score), "pov_1016", "(I1) *Extreme poverty headcount %")
+colnames(country_score)<-str_replace(colnames(country_score), "SL.TLF.CACT.FE.ZS", "(I2) Female labor participation %")
+colnames(country_score)<-str_replace(colnames(country_score), "HD.HCI.OVRL", "(I3) Human Capital Index")
+colnames(country_score)<-str_replace(colnames(country_score), "SI.POV.GINI", "(I1) *Gini Index")
+colnames(country_score)<-str_replace(colnames(country_score), "SE.SEC.ENRR", "(I3) Secondary school enrollment %")
+colnames(country_score)<-str_replace(colnames(country_score), "SH.IMM.IDPT", "(I3) Immunization DPT %")
+colnames(country_score)<-str_replace(colnames(country_score), "account.t.d.7", "(I1) Account ownership (poorest 40%)")
+colnames(country_score)<-str_replace(colnames(country_score), "LGBT_acc", "(I2) LGBT Acceptance Index")
+colnames(country_score)<-str_replace(colnames(country_score), "wbl", "(I2) Women, Business & Law Index")
+colnames(country_score)<-str_replace(colnames(country_score), "ref_idp", "(I1) *Refugees & IDPs index")
+colnames(country_score)<-str_replace(colnames(country_score), "SG.GEN.PARL.ZS", "(I2) Women in national parliaments %")
+colnames(country_score)<-str_replace(colnames(country_score), "EG.ELC.ACCS.ZS", "(I4) Access to electricity %")
+colnames(country_score)<-str_replace(colnames(country_score), "acc_sani_SDG", "(I4) Basic access to sanitation %")
+colnames(country_score)<-str_replace(colnames(country_score), "acc_water_SDG", "(I4) Basic access to water %")
+colnames(country_score)<-str_replace(colnames(country_score), "rai", "(I4) Rural Access Index")
+colnames(country_score)<-str_replace(colnames(country_score), "SH.UHC.SRVS.CV.XD", "(I3) Universal health coverage (UHC) index %")
+
+
+
+#Sustainability
+colnames(country_score)<-str_replace(colnames(country_score), "EN.ATM.PM25.MC.M3", "(S1) *PM2.5 mean annual exposure (\U00B5g/m3)")
+colnames(country_score)<-str_replace(colnames(country_score), "forest_loss", "(S4) *Forest loss %")
+colnames(country_score)<-str_replace(colnames(country_score), "EG.FEC.RNEW.ZS", "(S3) Renewable energy consumption %")
+colnames(country_score)<-str_replace(colnames(country_score), "wat_qua", "(S3) Water Quality SDG 6.3")
+colnames(country_score)<-str_replace(colnames(country_score), "WWT.new", "(S2) Wastewater treatment capacity %")
+colnames(country_score)<-str_replace(colnames(country_score), "waste_managed", "(S2) Waste properly managed %")
+colnames(country_score)<-str_replace(colnames(country_score), "waste_rate", "(S2) *Municipal solid waste (kg/pc/day)")
+colnames(country_score)<-str_replace(colnames(country_score), "BHV.new", "(S4) Biodiversity Habitat Index")
+colnames(country_score)<-str_replace(colnames(country_score), "FSH.new", "(S4) Fisheries Index")
+colnames(country_score)<-str_replace(colnames(country_score), "ghg_pc", "(S1) *GHG emissions per capita (% change)")
+colnames(country_score)<-str_replace(colnames(country_score), "EN.ATM.CO2E.PC", "(S1) *CO2 emissions (MT pc)")
+colnames(country_score)<-str_replace(colnames(country_score), "ecos_04_NDG", "(S3) *Ecological Footprint")
+colnames(country_score)<-str_replace(colnames(country_score), "fao_withdraw", "(S3) *Water withdrawal per capita (m3/year pc)")
+colnames(country_score)<-str_replace(colnames(country_score), "chloroph_SDG", "(S4) *Chlorophyll-a deviations in coastal water %")
+colnames(country_score)<-str_replace(colnames(country_score), "SH.STA.AIRP.P5", "(S1) *Mortality due to air pollution (per 100,000)")
+colnames(country_score)<-str_replace(colnames(country_score), "SH.STA.WASH.P5", "(S2) *Mortality due to unsafe WASH services (per 100,000)")
+
+
+#Efficiency
+colnames(country_score)<-str_replace(colnames(country_score), "agri_land", "(E4) Agri. land productivity ($/ha)")
+colnames(country_score)<-str_replace(colnames(country_score), "agri_value", "(E1) Agri. value added per worker")
+colnames(country_score)<-str_replace(colnames(country_score), "gini_ghg", "(E4) Total GNI/GHG emissions")
+colnames(country_score)<-str_replace(colnames(country_score), "gov_effect", "(E2) Governance effectiveness")
+colnames(country_score)<-str_replace(colnames(country_score), "cont_corr", "(E2) Control of corruption")
+colnames(country_score)<-str_replace(colnames(country_score), "reg_qua", "(E2) Regulatory quality")
+colnames(country_score)<-str_replace(colnames(country_score), "lpi_score", "(E1) Logistic Performance Index")
+colnames(country_score)<-str_replace(colnames(country_score), "IT.NET.USER.ZS", "(E3) Individuals using internet %")
+colnames(country_score)<-str_replace(colnames(country_score), "IT.CEL.SETS.P2", "(E3) Mobile cellular subscriptions (per 100 people)")
+colnames(country_score)<-str_replace(colnames(country_score), "rule_law", "(E2) Rule of law")
+colnames(country_score)<-str_replace(colnames(country_score), "rapid_trans", "(E3) Rapid transit to resident ratio (km/million)")
+colnames(country_score)<-str_replace(colnames(country_score), "energ_int", "(E4) *Energy intensity (% change)")
+colnames(country_score)<-str_replace(colnames(country_score), "patents", "(E1) Patents (per 100,000 people)")  
+colnames(country_score)<-str_replace(colnames(country_score), "dai", "(E1) Digital Penetration Index")  
+colnames(country_score)<-str_replace(colnames(country_score), "water_efficiency_ceo", "(E4) Water productivity (GNI/m3)")
+colnames(country_score)<-str_replace(colnames(country_score), "IS.SHP.GCNW.XQ", "(E3) Shipping connectivity index")
+
+  
+
+
+mean_reg_score<- country_score %>%
+  group_by(region)%>%
+    dplyr::summarise(across(where(is.numeric), function(x){mean(x, na.rm=TRUE)}))
+
+mean_reg_score <- mean_reg_score %>%
+  filter(region=='Middle East & North Africa')
+
+
+atatat <- data.frame("MENA region","MENA","Upper middle income")
+colnames(atatat) <- c("country","iso3","income")
+
+mean_reg_score <- cbind(mean_reg_score,atatat)
+
+
+country_score <- rbind(country_score, mean_reg_score)
+
+
+for(i in country) {
+country_score <- country_score[country_score$iso3 == "MENA", ]
+country_score <- as.data.frame(t(as.matrix(country_score)))
+country_score <- country_score %>% rownames_to_column("indicator")
+colnames(country_score)<-c("indicator", "score")
+country_score$category <- ifelse(country_score$indicator %in% efficiency, '2.Efficiency',
+                                   ifelse(country_score$indicator %in% sustainability, '3.Sustainability',
+                                          ifelse(country_score$indicator %in% resilience, '4.Resilience', 
+                                                 ifelse(country_score$indicator %in% inclusion, '1.Inclusion', 'Other'))))
+
+
+country_score <- country_score%>% filter(category!='Other') 
+
+#Join percentage and raw value
+country_score <-left_join(country_score, country_values, by="indicator")
+country_score$raw_value<-as.numeric(as.character(country_score$raw_value))
+country_score$raw_value<-format(round(country_score$raw_value, 2), nsmall = 2)
+
+# Format score data for graphs
+
+country_score$score <- as.numeric(as.character(country_score$score))
+country_score$score<-country_score$score*100
+country_score <- country_score[order(country_score$category),]
+
+#Create the second database for graph pillars (regional/income)
+
+#Get inverse values for score graph - For the individual pillars graphs we need to get the value of the indicator and the inverse value, to create the circular graph as an stacked plot #in the score_graph_data, score will be the inverse value and 
+country_score$score <- with(country_score, (100-score))
+country_score$values <- with(country_score, (100-score))
+
+country_score$score <- as.integer(country_score$score)
+country_score$values <- as.integer(country_score$values)
+
+write.csv(country_score, paste0(dir_out, group,'/',"MENA_score_graphs_v",version,".csv"), row.names = FALSE)
+
+}
+```
+
+
+# Loop to GET MEDIAN/MEAN and SD values per MENA region to compare with ECA and SA median
+```{r}
+#Use raw data to compare
+country_val<- read.csv(file=paste0(dir_out, group,'/',"MENA","_percentil_v",version,".csv"), header=TRUE, sep=",")%>%
+  select(-percentil)
+
+
+#country_aspi
+income_info_country<-income_info%>%
+  filter(region_red == "SA" | region_red == "ECA")
+
+income_info_country<-left_join(income_info_country, country_val, by="indicator")
+income_info_country<-income_info_country%>%
+  filter(!is.na(category))%>%
+  arrange(region_red, category)
+
+income_info_country$raw_value<-as.numeric(as.character(income_info_country$raw_value))
+
+income_info_country<-income_info_country %>% 
+ mutate_if(is.numeric, round, digits=1)
+
+#Create categorical category to use the conditional formatting in excel:
+# 3 indicator above one standard deviation from the mean 
+# 2 indicator within one standard deviation from the mean
+# 1 indicator below one standard deviation 
+# This function also revert the values for indicators in which a higher number means worse performing)
+#For MEAN
+income_info_country<-income_info_country%>%
+ mutate(mean_flag = ifelse(str_detect(indicator, "\\*") & raw_value > sd_mean_up , "1",
+                            ifelse(raw_value > sd_mean_up, "3",
+                            ifelse(raw_value <= sd_mean_up & raw_value >= sd_mean_down, "2",
+                            ifelse(str_detect(indicator, "\\*") & raw_value < sd_mean_down, "3",
+                            ifelse(raw_value < sd_mean_down, "1", "Error"))))))
+#For MEDIAN 
+income_info_country<-income_info_country%>%
+ mutate(median_flag = ifelse(str_detect(indicator, "\\*") & raw_value > sd_median_up , "1",
+                            ifelse(raw_value > sd_median_up, "3",
+                            ifelse(raw_value <= sd_median_up & raw_value >= sd_median_down, "2",
+                            ifelse(str_detect(indicator, "\\*") & raw_value < sd_median_down, "3",
+                            ifelse(raw_value < sd_median_down, "1", "Error"))))))
+
+#Arrange to easily modify in excel 
+income_info_country<-income_info_country%>%
+  dplyr::select("category", "region_red", "indicator", "raw_value", "median_flag",  "median")
+
+write.csv(income_info_country,paste0(dir_out, group,'/',"MENA_tables_data_v",version,".csv"), row.names = FALSE)
+
+
+```
+
+# Loop to prepare data for PERCENTIL RANKING GRAPH - CIRCULAR (ALL PILLARS- Global data)
+```{r}
+
+# Load dataset from data generated in the previous section
+  country_percent <- read.csv(file=paste0(dir_out, group,'/',"MENA_percentil_v",version,".csv"), header=TRUE, sep=",")
+
+  
+  
+data3<-country_percent
+
+#Arrange data and filter NA
+data3 <- data3 %>% 
+  filter(!is.na(percentil))%>% 
+  arrange(category, percentil)
+data3$id <- seq(1, nrow(data3))
+
+#Create labels for each column and angles (no need to adjust. With this method labels are aligned automatically)
+label_data3 <- data3
+number_of_bar3 <- nrow(label_data3)
+angle3 <- 90 - 360 * (label_data3$id-0.5) /number_of_bar3     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data3$hjust <- ifelse(angle3 < -90, 1, 0)
+label_data3$angle <- ifelse(angle3 < -90, angle3+180, angle3)
+
+# prepare a data frame for pillars names
+base_data3 <- data3 %>% 
+  group_by(category) %>% 
+  dplyr::summarize(start=min(id), end=max(id)) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+#Remove numbers to the  pillar category name 
+base_data3$category2<-str_replace(base_data3$category, "1.|2.|3.|4.", "")
+
+#Paste indicators labels with  percentil rank values (ej, 35.- Labor market)
+label_data3$test <- paste(data3$percentil, "-", data3$indicator)
+
+com <- ggplot(data3) +      
+  
+  # Add the stacked bar
+  geom_bar(aes(x=as.factor(id), y=percentil, fill=category, colour=category), stat="identity", alpha=0.7, size=0.2) +
+  #colors used by the CEO in their first draft of the benchmarking
+  #scale_fill_manual(values=c("hotpink1","gold1","steelblue2", "green3")) +
+  scale_fill_manual(values=c("red2" ,"darkmagenta", "goldenrod1","darkcyan"))+
+  scale_colour_manual(values=c("black","black", "black","black")) +
+  
+    geom_label(x = 0, y = -50, label = i, hjust=0.5, fontface="bold", size=7) +
+  
+  ylim(-50,120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(-3,-3,-3,-3, "cm") 
+  ) +
+  coord_polar() +
+  
+  ####Remember to put a if that makes it smaller for v2  PLACEHOLDER 
+  
+   # Add labels on top of each bar
+  geom_text(data=label_data3, aes(x=id, y=percentil+2, label= str_wrap(test, width = 20), hjust=label_data3$hjust), color="black", fontface="bold",alpha=1, size=perctext, angle= label_data3$angle, inherit.aes = FALSE ) +
+
+  # Add base line information
+geom_segment(data=base_data3, aes(x = start, y = -5, xend = end, yend = -5), colour = "black", alpha=0.8, size=0.6 , inherit.aes = FALSE )  +
+  geom_text(data=base_data3, aes(x = title, y = -18, label=category2), hjust=c(0.5,0.5,0.5,0.5), angle=c(-60, 15, -65, 40), colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE)
+
+
+ggsave(com, file=paste0(dir_out, group,'/',"MENA_percentil_global_v",version,".pdf"), width=12, height=13)
+
+```
+
+
+
+#Graphs per pillars (RISE) - SUSTAINABILITY
+```{r}
+    ##########
+  # Sustainability#    #Different set of indicators for V0 AND V1
+    ##########
+
+for(i in country){
+# Load dataset with country scores generated in the previous section
+  country_score <- read.csv(file=paste0(dir_out, group,'/',i,"_score_graphs_v",version,".csv"), header=TRUE, sep=",")
+  
+
+#Split data for graphs 
+country_score_graph1 <- country_score %>% filter(category== '3.Sustainability')
+
+data2<-country_score_graph1
+data2$order <- seq(1, nrow(data2))
+
+# Move order column to the front so it does not get rejected when transforming to long format (column necessary to keep order of dimensions for the graph)
+data2 <- data2 %>% 
+  filter(!is.na(score))%>%
+  select(order, everything())
+
+# Transform data in a tidy format (long format)
+data2 <- stats::reshape(data2, 
+                direction = "long",
+                varying = c("score", "values"),
+                v.names = "value",
+                idvar = c("order", "indicator", "category", "raw_value"),
+                timevar = "observation",
+                times = 1:2)
+
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- 2
+nObsType <- nlevels(as.factor(data2$observation))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(as.factor(data2$category))*nObsType*.5, ncol(data2)))
+colnames(to_add) <- colnames(data2)
+to_add$category <- rep(levels(as.factor(data2$category)), each=empty_bar*nObsType*.5 )
+data2 <- rbind(data2, to_add)
+
+grpid = function(x) match(x, unique(x))
+data2 <- data2 %>% mutate(group_id = group_indices(., category) %>% grpid)
+
+#To group inverse and no inverse value
+data2<- data2 %>% mutate(group_order=case_when(
+  group_id == 1 ~ "A",
+  TRUE ~ NA_character_ # all else are NA
+))
+
+data2 <- data2[order(data2$indicator),]
+
+data2$id <- rep( seq(1, nrow(data2)/nObsType) , each=nObsType)
+
+#Create labels for each column and angles (no need to adjust. With this method labels are aligned automatically)
+label_data2 <- data2 %>% dplyr::group_by(id, indicator, raw_value) %>% dplyr::summarize(tot=sum(value))
+number_of_bar2 <- nrow(label_data2)
+angle2 <- 90 - 360 * (label_data2$id-0.5) /number_of_bar2     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data2$hjust <- ifelse(angle2 < -90, 1, 0)
+label_data2$angle <- ifelse(angle2 < -90, angle2+180, angle2)
+
+# prepare a data frame for base lines
+base_data2 <- data2 %>% 
+  group_by(group_order) %>% 
+  dplyr::summarize(start=min(id), end=max(id) 
+            - empty_bar
+          ) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data2 <- base_data2
+grid_data2$end <- grid_data2$end[ c( nrow(grid_data2), 1:nrow(grid_data2)-1)] + 1.4
+grid_data2$start <- grid_data2$start - .4
+#grid_data2 <- grid_data2[-1,]
+
+#Paste categories and raw values
+
+data2$inv  <- ifelse(grepl("\\) \\*",data2$indicator), 1, 0)
+data2$inv[is.na(data2$indicator)] <- NA
+
+data2$cat <- paste(data2$observation,data2$group_order,data2$inv)
+
+label_data2$ind_value<-paste(label_data2$raw_value, "-", label_data2$indicator)
+
+
+
+s <- ggplot(data2) +      
+  
+  # Add the stacked bar
+  geom_bar(aes(x=as.factor(id), y=value, fill=cat, colour=cat), stat="identity", alpha=0.5, size=0.2) +
+  #scale_fill_manual(values=c("white","steelblue1")) +
+  scale_fill_manual(values=c("white","white","goldenrod1","lightgoldenrod1")) +
+  scale_colour_manual(values=c("black","black","black","black")) +
+
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  #geom_segment(data=grid_data2, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  
+    geom_label(x = 0, y = 0, label = i, hjust=0.5, fontface="bold", size=10) +
+    annotate("text", x = rep(max(data2$id),5), y = c(20, 40, 60, 80, 100), label = c("20", "40", "60", "80", "100") , color="grey", size=5 , angle=0, fontface="bold", hjust=.5) +
+  
+  ylim(0 , 120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(-3,-3,-3,-3, "cm") 
+  ) +
+  coord_polar() +
+  
+   # Add labels on top of each bar
+  
+  geom_text(data=label_data2, aes(x=id, y=tot-50, label= str_wrap(ind_value, width = 22), hjust=label_data2$hjust), color="black", fontface="bold",alpha=1, size=pillartext, angle= label_data2$angle, inherit.aes = FALSE ) 
+
+
+ggsave(s, file=paste0(dir_out, group,'/',i,"_score_graph_sust_v",version,".png"), width=10, height=10)
+ggsave(s, file=paste0(dir_out, group,'/',i,"_score_graph_sust_v",version,".pdf"), width=10, height=10)
+
+
+}
+```
+
+
+# Graphs per pillars (RISE) -INCLUSION
+```{r}
+      ##########
+     # Inclusion #    #Different set of indicators for V0 AND V1
+      ##########
+
+#detach(package:plyr)
+  
+for(i in country){
+# Load dataset with country scores generated in the previous section
+  country_score <- read.csv(file=paste0(dir_out, group,'/',i,"_score_graphs_v",version,".csv"), header=TRUE, sep=",")
+
+
+
+#Split data for graphs 
+country_score_graph2 <- country_score %>% filter(category== '1.Inclusion')
+
+data2<-country_score_graph2
+data2$order <- seq(1, nrow(data2))
+
+# Move order column to the front so it does not get rejected when transforming to long format (column necessary to keep order of dimensions for the graph)
+data2 <- data2 %>% 
+  filter(!is.na(score))%>%
+  select(order, everything())
+
+# Transform data in a tidy format (long format)
+data2 <- stats::reshape(data2, 
+                direction = "long",
+                varying = c("score", "values"),
+                v.names = "value",
+                idvar = c("order", "indicator", "category", "raw_value"),
+                timevar = "observation",
+                times = 1:2)
+
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- 2
+nObsType <- nlevels(as.factor(data2$observation))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(as.factor(data2$category))*nObsType*.5, ncol(data2)))
+colnames(to_add) <- colnames(data2)
+to_add$category <- rep(levels(as.factor(data2$category)), each=empty_bar*nObsType*.5 )
+data2 <- rbind(data2, to_add)
+
+grpid = function(x) match(x, unique(x))
+data2 <- data2 %>% mutate(group_id = group_indices(., category) %>% grpid)
+
+#To group inverse and no inverse value
+data2<- data2 %>% mutate(group_order=case_when(
+  group_id == 1 ~ "A",
+  TRUE ~ NA_character_ # all else are NA
+))
+
+data2 <- data2[order(data2$indicator),]
+
+data2$id <- rep( seq(1, nrow(data2)/nObsType) , each=nObsType)
+
+#Create labels for each column and angles (no need to adjust. With this method labels are aligned automatically)
+label_data2 <- data2 %>% dplyr::group_by(id, indicator, raw_value) %>% dplyr::summarize(tot=sum(value))
+number_of_bar2 <- nrow(label_data2)
+angle2 <- 90 - 360 * (label_data2$id-0.5) /number_of_bar2     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data2$hjust <- ifelse(angle2 < -90, 1, 0)
+label_data2$angle <- ifelse(angle2 < -90, angle2+180, angle2)
+
+# prepare a data frame for base lines
+base_data2 <- data2 %>% 
+  group_by(group_order) %>% 
+  dplyr::summarize(start=min(id), end=max(id) 
+            - empty_bar
+          ) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data2 <- base_data2
+grid_data2$end <- grid_data2$end[ c( nrow(grid_data2), 1:nrow(grid_data2)-1)] + 1.4
+grid_data2$start <- grid_data2$start - .4
+#grid_data2 <- grid_data2[-1,]
+
+#Paste categories and raw values
+data2$inv  <- ifelse(grepl("\\) \\*",data2$indicator), 1, 0)
+data2$inv[is.na(data2$indicator)] <- NA
+
+data2$cat <- paste(data2$observation,data2$group_order,data2$inv)
+label_data2$ind_value<-paste(label_data2$raw_value, "-", label_data2$indicator)
+
+inc <- ggplot(data2) +      
+  
+  # Add the stacked bar
+  geom_bar(aes(x=as.factor(id), y=value, fill=cat, colour=cat), stat="identity", alpha=0.5, size=0.2) +
+  #scale_fill_manual(values=c("white","hotpink1")) +
+  scale_fill_manual(values=c("white","white","red2","coral")) +
+  scale_colour_manual(values=c("black","black","black","black")) +
+
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  #geom_segment(data=grid_data2, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  
+    geom_label(x = 0, y = 0, label = i, hjust=0.5, fontface="bold", size=10) +
+    annotate("text", x = rep(max(data2$id),5), y = c(20, 40, 60, 80, 100), label = c("20", "40", "60", "80", "100") , color="grey", size=5 , angle=0, fontface="bold", hjust=.5) +
+  
+  ylim(0 , 120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(-3,-3,-3,-3, "cm") 
+  ) +
+  coord_polar() +
+  
+   # Add labels on top of each bar
+  
+  geom_text(data=label_data2, aes(x=id, y=tot-50, label= str_wrap(ind_value, width = 22), hjust=label_data2$hjust), color="black", fontface="bold",alpha=1, size=pillartext, angle= label_data2$angle, inherit.aes = FALSE ) 
+
+
+ggsave(inc, file=paste0(dir_out, group,'/',i,"_score_graph_incl_v",version,".png"), width=10, height=10)
+ggsave(inc, file=paste0(dir_out, group,'/',i,"_score_graph_incl_v",version,".pdf"), width=10, height=10)
+
+}
+
+```
+
+
+# Graphs per pillars (RISE) - Efficiency
+```{r}
+    ##########
+# 2. Efficiency  # Same set of indicators for V0 and V1 (still using version control in case the indicators change)
+    ##########
+#detach(package:plyr)
+  
+for(i in country){
+# Load dataset with country scores generated in the previous section
+  country_score <- read.csv(file=paste0(dir_out, group,'/',i,"_score_graphs_v",version,".csv"), header=TRUE, sep=",")
+
+
+
+
+#Split data for graphs 
+country_score_graph2 <- country_score %>% filter(category== '2.Efficiency')
+
+data2<-country_score_graph2
+data2$order <- seq(1, nrow(data2))
+
+# Move order column to the front so it does not get rejected when transforming to long format (column necessary to keep order of dimensions for the graph)
+data2 <- data2 %>% 
+  filter(!is.na(score))%>%
+  select(order, everything())
+
+# Transform data in a tidy format (long format)
+data2 <- stats::reshape(data2, 
+                direction = "long",
+                varying = c("score", "values"),
+                v.names = "value",
+                idvar = c("order", "indicator", "category", "raw_value"),
+                timevar = "observation",
+                times = 1:2)
+
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- 2
+nObsType <- nlevels(as.factor(data2$observation))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(as.factor(data2$category))*nObsType*.5, ncol(data2)))
+colnames(to_add) <- colnames(data2)
+to_add$category <- rep(levels(as.factor(data2$category)), each=empty_bar*nObsType*.5 )
+data2 <- rbind(data2, to_add)
+
+grpid = function(x) match(x, unique(x))
+data2 <- data2 %>% mutate(group_id = group_indices(., category) %>% grpid)
+
+#To group inverse and no inverse value
+data2<- data2 %>% mutate(group_order=case_when(
+  group_id == 1 ~ "A",
+  TRUE ~ NA_character_ # all else are NA
+))
+
+data2 <- data2[order(data2$indicator),]
+
+data2$id <- rep( seq(1, nrow(data2)/nObsType) , each=nObsType)
+
+#Create labels for each column and angles (no need to adjust. With this method labels are aligned automatically)
+label_data2 <- data2 %>% dplyr::group_by(id, indicator, raw_value) %>% dplyr::summarize(tot=sum(value))
+number_of_bar2 <- nrow(label_data2)
+angle2 <- 90 - 360 * (label_data2$id-0.5) /number_of_bar2     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data2$hjust <- ifelse(angle2 < -90, 1, 0)
+label_data2$angle <- ifelse(angle2 < -90, angle2+180, angle2)
+
+# prepare a data frame for base lines
+base_data2 <- data2 %>% 
+  group_by(group_order) %>% 
+  dplyr::summarize(start=min(id), end=max(id) 
+            - empty_bar
+          ) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data2 <- base_data2
+grid_data2$end <- grid_data2$end[ c( nrow(grid_data2), 1:nrow(grid_data2)-1)] + 1.4
+grid_data2$start <- grid_data2$start - .4
+#grid_data2 <- grid_data2[-1,]
+
+#Paste categories and raw values
+data2$inv  <- ifelse(grepl("\\) \\*",data2$indicator), 1, 0)
+data2$inv[is.na(data2$indicator)] <- NA
+
+data2$cat <- paste(data2$observation,data2$group_order,data2$inv)
+label_data2$ind_value<-paste(label_data2$raw_value, "-", label_data2$indicator)
+
+e <- ggplot(data2) +      
+  
+  # Add the stacked bar
+  geom_bar(aes(x=as.factor(id), y=value, fill=cat, colour=cat), stat="identity", alpha=0.5, size=0.2) +
+  #scale_fill_manual(values=c("white","gold1")) +
+  scale_fill_manual(values=c("white","white","darkmagenta","plum")) +
+  scale_colour_manual(values=c("black","black","black","black")) +
+
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  #geom_segment(data=grid_data2, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  
+    geom_label(x = 0, y = 0, label = i, hjust=0.5, fontface="bold", size=10) +
+    annotate("text", x = rep(max(data2$id),5), y = c(20, 40, 60, 80, 100), label = c("20", "40", "60", "80", "100") , color="grey", size=5 , angle=0, fontface="bold", hjust=.5) +
+  
+  ylim(0 , 120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(-3,-3,-3,-3, "cm") 
+  ) +
+  coord_polar() +
+  
+   # Add labels on top of each bar
+  
+  geom_text(data=label_data2, aes(x=id, y=tot-50, label= str_wrap(ind_value, width = 22), hjust=label_data2$hjust), color="black", fontface="bold",alpha=1, size=pillartext, angle= label_data2$angle, inherit.aes = FALSE ) 
+
+
+ggsave(e, file=paste0(dir_out, group,'/',i,"_score_graph_eff_v",version,".png"), width=10, height=10)
+ggsave(e, file=paste0(dir_out, group,'/',i,"_score_graph_eff_v",version,".pdf"), width=10, height=10)
+
+}
+```
+
+
+
+#Graphs per pillars (RISE) - Resilience
+```{r}
+    ##########
+#   RESILIENCE #    # Same set of indicators for V0 and V1 (still using version control in case it indicators change)
+    ##########
+#detach(package:plyr)
+  
+for(i in country){
+# Load dataset with country scores generated in the previous section
+  country_score <- read.csv(file=paste0(dir_out, group,'/',i,"_score_graphs_v",version,".csv"), header=TRUE, sep=",")
+
+  
+  
+##### Resilience #######
+
+#Split data for graphs 
+country_score_graph2 <- country_score %>% filter(category== '4.Resilience')
+
+data2<-country_score_graph2
+data2$order <- seq(1, nrow(data2))
+
+# Move order column to the front so it does not get rejected when transforming to long format (column necessary to keep order of dimensions for the graph)
+data2 <- data2 %>% 
+  filter(!is.na(score))%>%
+  select(order, everything())
+
+# Transform data in a tidy format (long format)
+data2 <- stats::reshape(data2, 
+                direction = "long",
+                varying = c("score", "values"),
+                v.names = "value",
+                idvar = c("order", "indicator", "category", "raw_value"),
+                timevar = "observation",
+                times = 1:2)
+
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- 2
+nObsType <- nlevels(as.factor(data2$observation))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(as.factor(data2$category))*nObsType*.5, ncol(data2)))
+colnames(to_add) <- colnames(data2)
+to_add$category <- rep(levels(as.factor(data2$category)), each=empty_bar*nObsType*.5 )
+data2 <- rbind(data2, to_add)
+
+grpid = function(x) match(x, unique(x))
+data2 <- data2 %>% mutate(group_id = group_indices(., category) %>% grpid)
+
+#To group inverse and no inverse value
+data2<- data2 %>% mutate(group_order=case_when(
+  group_id == 1 ~ "A",
+  TRUE ~ NA_character_ # all else are NA
+))
+
+data2 <- data2[order(data2$indicator),]
+
+data2$id <- rep( seq(1, nrow(data2)/nObsType) , each=nObsType)
+
+#Create labels for each column and angles (no need to adjust. With this method labels are aligned automatically)
+label_data2 <- data2 %>% dplyr::group_by(id, indicator, raw_value) %>% dplyr::summarize(tot=sum(value))
+number_of_bar2 <- nrow(label_data2)
+angle2 <- 90 - 360 * (label_data2$id-0.5) /number_of_bar2     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data2$hjust <- ifelse(angle2 < -90, 1, 0)
+label_data2$angle <- ifelse(angle2 < -90, angle2+180, angle2)
+
+# prepare a data frame for base lines
+base_data2 <- data2 %>% 
+  group_by(group_order) %>% 
+  dplyr::summarize(start=min(id), end=max(id) 
+            - empty_bar
+          ) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data2 <- base_data2
+grid_data2$end <- grid_data2$end[ c( nrow(grid_data2), 1:nrow(grid_data2)-1)] + 1.4
+grid_data2$start <- grid_data2$start - .4
+#grid_data2 <- grid_data2[-1,]
+
+#Paste categories and raw values
+data2$inv  <- ifelse(grepl("\\) \\*",data2$indicator), 1, 0)
+data2$inv[is.na(data2$indicator)] <- NA
+
+data2$cat <- paste(data2$observation,data2$group_order,data2$inv)
+
+label_data2$ind_value<-paste(label_data2$raw_value, "-", label_data2$indicator)
+
+r <- ggplot(data2) +      
+  
+  # Add the stacked bar
+  geom_bar(aes(x=as.factor(id), y=value, fill=cat, colour=cat), stat="identity", alpha=0.5, size=0.2) +
+  #scale_fill_manual(values=c("white","green3")) +
+  scale_fill_manual(values=c("white","white","darkcyan","lightblue2")) +
+  scale_colour_manual(values=c("black","black","black","black")) +
+
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  #geom_segment(data=grid_data2, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data2, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  
+    geom_label(x = 0, y = 0, label = i, hjust=0.5, fontface="bold", size=10) +
+    annotate("text", x = rep(max(data2$id),5), y = c(20, 40, 60, 80, 100), label = c("20", "40", "60", "80", "100") , color="grey", size=5 , angle=0, fontface="bold", hjust=.5) +
+  
+  ylim(0 , 120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(-3,-3,-3,-3, "cm") 
+  ) +
+  coord_polar() +
+  
+   # Add labels on top of each bar
+  
+  geom_text(data=label_data2, aes(x=id, y=tot-50, label= str_wrap(ind_value, width = 22), hjust=label_data2$hjust), color="black", fontface="bold",alpha=1, size=pillartext, angle= label_data2$angle, inherit.aes = FALSE ) 
+
+
+ggsave(r, file=paste0(dir_out, group,'/',i,"_score_graph_res_v",version,".png"), width=10, height=10)
+ggsave(r, file=paste0(dir_out, group,'/',i,"_score_graph_res_v",version,".pdf"), width=10, height=10)
+
+}
+
+```
+
+
+#Density plot for Morocco in IDP due to natural disasters
+```{r}
+
+country_all <- read.csv(paste0(dir_int,"World_SD_values_V5_index_2",version,".csv"))
+
+ddd <- country_all %>% filter(income=="Lower middle income")
+
+# compute mean salary
+mean_var <- ddd %>% 
+  pull(displaced) %>% 
+  mean(na.rm=T) %>%
+  signif(6)
+
+med_var <- ddd %>% 
+  pull(displaced) %>% 
+  median(na.rm=T) %>%
+  signif(6)
+
+
+r <- ggplot(ddd, aes(x=displaced)) +
+    geom_density(alpha=.5, fill="tomato3") +
+    geom_vline(xintercept=mean_var,  colour="tomato2",linetype="dashed", size=1) +
+      geom_vline(xintercept=med_var,  colour="tomato1",linetype="dashed", size=1) +
+   geom_text(size=4,aes(x=mean_var+80, label=paste0("Mean\n",mean_var), y=0.003)) +
+  geom_text(size=4,aes(x=med_var+80, label=paste0("Median\n",med_var), y=0.004)) +
+    xlab("IDPs due to natural disasters (cases per 100,000)") +
+  theme_minimal()
+
+
+ggsave(r, file=paste0(dir_out,'/',"MAR_idpdistasters.png"), width=16, height=8)
+
+
+```
