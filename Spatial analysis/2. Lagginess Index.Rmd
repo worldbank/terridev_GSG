@@ -1,0 +1,584 @@
+---
+title: "Lagginess Index"
+author: "Evelyn Sanchez"
+date: "2/27/2020"
+output:
+  html_document: default
+---
+```{r setup, include=FALSE}
+# Define the working directory for the entire markdown file to enable relative path
+knitr::opts_knit$set(root.dir = "/Users/eves/Dropbox/LATAM_WorldBank")
+```
+
+```{r, message=FALSE}
+#load libraries
+library(BAMMtools)
+library(BBmisc)
+library(classInt)
+library(cowplot)
+library(data.table)
+library(doBy)
+library(foreign)
+library(ggplot2)
+library(mapproj)
+library(maptools)
+library(plyr)
+library(dplyr)
+library(raster)
+library(rgeos)
+library(RColorBrewer)
+library(rgdal)
+library(shapefiles)
+library(sp)
+library(stringr)
+library(tidyr)
+library(tidyverse)
+library(viridis)
+library(viridisLite)
+library(readstata13)
+```
+
+#1. Load and merge required databases
+
+#Define path
+```{r, message=FALSE}
+#Set working directories
+dir_shp <- "./Boundaries/LATAM/"                     #Confirm path
+dir_shp_country <- "./Boundaries/BOL/"               #Confirm path
+dir_cap <- "./Boundaries/Capitals/"                  #Confirm path
+dir_raw <- "./Index/Raw/"                            #Confirm path
+dir_mrk <- "./Index/BOL/Output/"                     #Confirm path
+dir_out <- "./Index/BOL/Output2/"                    #Confirm path
+dir_fig <- "./Index/BOL/Maps/"                       #Confirm path
+
+#confirm working directory
+getwd()
+```
+
+#Read HDD data set (which includes Poverty, Nightlights, Disaster Risk and other indicators)
+```{r, message=FALSE}
+data_base<- read.csv(paste0(dir_raw, "Index_base_032020.csv"),  header=TRUE)     #Confirm filename
+```
+
+#Transform and rename variables of interest
+```{r}
+#transform variables to numeric type
+data_base$y230<- as.numeric(as.character(data_base$y230))
+data_base$y207<- as.numeric(as.character(data_base$y207))
+data_base$y36<- as.numeric(as.character(data_base$y36))
+data_base$y9<- as.numeric(as.character(data_base$y9))
+data_base$VIIRS<- as.numeric(as.character(data_base$VIIRS))
+
+#set variables names
+colnames(data_base)[colnames(data_base)=="y207"] <- "area_sqkm2"
+colnames(data_base)[colnames(data_base)=="y230"] <- "water_sh"
+colnames(data_base)[colnames(data_base)=="y34"] <- "forest_km"
+colnames(data_base)[colnames(data_base)=="y32"] <- "flood_num"
+```
+
+#Process Nightlight data 
+```{r}
+#Nighlights by area (VIIRS_dens2)
+data_base$VIIRS_d_km= data_base$VIIRS/data_base$area_sqkm2
+
+#Nightlights per capita (VIIRS_pc)
+data_base$VIIRS_pc= data_base$VIIRS/data_base$Pop
+
+#Generate inverse value of nighlights 
+#Total nighlights inv_VIIRS
+data_base$inv_VIIRS= 1/data_base$VIIRS
+#Nighlights per capita (inv_VIIRS_pc)
+data_base$inv_VIIRS_pc= 1/(data_base$VIIRS_pc+1)
+
+#Check inv_VIIRS_pc mean
+mean(data_base$inv_VIIRS_pc, na.rm= TRUE)
+```
+#Filter data for the country of interest (Example: Bolivia)
+```{r}
+data_country <- data_base[data_base$ISO == "BOL", ] 
+```
+
+#Load Market Access Index and join with HDD data set (generated in the First Step)
+```{r}
+# Load dataset 
+Market_country <- read.csv(paste0(dir_mrk, "MKT_Access_BOL_Stats.csv"),  header=TRUE)  #Confirm filename
+
+#Subset Market Access data
+Market_country<-Market_country%>%
+  dplyr::select(TARGET_FID, median, mean)
+colnames(Market_country)[colnames(Market_country)=="median"] <- "Acc_median"
+colnames(Market_country)[colnames(Market_country)=="mean"] <- "Acc_mean"
+
+#Merge using "TARGET_FID"
+data_country<- data_country %>% left_join(Market_country, by="TARGET_FID")
+```
+
+#Calculate inverse value of Market Access
+```{r}
+data_country$inv_Acc_median= 1/(data_country$Acc_median+1)
+```
+
+#2. Lagginess index calculation
+ 
+Calculate z-score for poverty, nightlights and market access
+```{r, warning= FALSE}
+#Eliminate all inf values generate by 1/var dividisions
+data_country[sapply(data_country, is.infinite)] <- NA
+
+#Select variables of interest
+vars<-c("poor_ppp55", "inv_VIIRS", "inv_VIIRS_pc", "inv_Acc_median")
+
+#Save data_country as back up dataset
+index_all<-data_country
+
+#Calculate mean, median and sd for the z-score
+index_all<- index_all%>%
+  group_by(NAME_0) %>%
+   dplyr::mutate_at(.funs = funs(z=(. - mean(., na.rm=TRUE))/sd(., na.rm=TRUE)), .vars=vars)
+```
+
+#Add z-scores to create lagginess index
+```{r}
+index_all <- mutate(index_all, z_score_den = poor_ppp55_z
+                                     + inv_Acc_median_z
+                                     + inv_VIIRS_pc_z)
+
+mean(index_all$z_score_den, na.rm=TRUE)
+sd(index_all$z_score_den, na.rm=TRUE)
+
+#Get Max and Min values per country
+index_all<-index_all%>%
+  group_by(NAME_0)%>%
+  dplyr::mutate(z_max_den = max(z_score_den, na.rm = TRUE), z_min_den = min(z_score_den, na.rm = TRUE))
+
+#Compute lagging index
+index_all <- dplyr::mutate(index_all, L_Index_den = 100*(z_score_den - z_min_den)/(z_max_den-z_min_den))
+```
+
+#Calculate lagginess areas
+```{r}
+#Get the top 40 percentile 
+top_40per<- quantile(index_all$L_Index_den, probs = 0.6)
+
+#Define lagging areas based on the top 40 percentile
+index_all<-index_all %>% 
+  mutate(top40_de = ifelse( L_Index_den >= top_40per, "1", "0"))
+
+#Eliminate all inf values generate by 1/var dividisions
+index_all[sapply(index_all, is.infinite)] <- NA
+```
+
+#Calculate proportion of resources in lagging areas
+```{r}
+#Transfor variables for calculation
+index_all$water_km<- index_all$area_sqkm2*index_all$water_sh*100
+index_all$risk_area[is.na(index_all$risk_area)] <- 0
+
+#Calculate share of forest, land, people, biodiversity, and high risk between Lagging and non-Lagging areas
+share_data<-index_all%>% 
+  dplyr::group_by(top40_de)%>% 
+  summarise(sum_forest_km=sum(forest_km),                                 #Forest
+            sum_land_km=sum(area_sqkm2),                                  #Area
+            sum_pop=sum(Pop),                                             #Pop
+            sum_water_km=sum(water_km),                                   #Water
+            sum_bio_km=sum(bio_area),                                     #Biodiversity
+            sum_risk_km=sum(risk_area),                                   #Risk area
+            sum_flood= sum(flood_num)                                     #Number of floods
+            )%>%
+  mutate(forest_sh = sum_forest_km/sum(sum_forest_km), 
+         land_sh = sum_land_km/sum(sum_land_km),
+         pop_sh= sum_pop/sum(sum_pop),
+         water_sh_t=sum_water_km/sum(sum_water_km), 
+         biod_sh_t=sum_bio_km/sum(sum_bio_km),
+         risk_sh_t=sum_risk_km/sum(sum_risk_km),
+         flood_sh_t=sum_flood/sum(sum_flood)
+         )
+
+share_data$top40_de[share_data$top40_de == 1]<- "Lagging"
+share_data$top40_de[share_data$top40_de == 0]<- "Non_Lagging"
+
+#Save proportions
+write.csv(share_data, paste(dir_out, "Share_prop_GTM.csv", sep=""), row.names = FALSE)
+
+```
+
+#3. Map indicators
+
+Load shapefiles 
+```{r}
+#Country shapefile
+shape <- readOGR(dsn = dir_shp_country, layer = "Bolivia") %>%                                #Change filename
+  spTransform(crs("+proj=longlat +datum=WGS84 +no_defs"))
+
+#LATAM Region shapefile
+reg_shape <- readOGR(dsn = dir_shp, layer = "LATAM_Boundaries") %>%                            #Change filename
+  spTransform(crs("+proj=longlat +datum=WGS84 +no_defs"))
+
+#Subset municipalities surrounding  #Chang
+border_country <- reg_shape[reg_shape@data$TARGET_FID %in% c("25", "18", "17", "115", "97","104", "105", "94", "147", "134","136", "444", "449", "455", "440","474", "475", "478", "480", "482", "460", "464"), ] 
+
+# Fortify borders (surrounding districts only)
+border_country <- fortify(border_country, region="TARGET_FID") %>%    
+  mutate(id=as.numeric(id))
+```
+
+#Add capital layers
+```{r}
+#Capitals Names, shapefile
+capitals <- readOGR(dsn = dir_cap, layer = "Capitals") %>%          #Change filename
+  spTransform(crs("+proj=longlat +datum=WGS84 +no_defs"))
+
+capitals<-capitals@data%>%
+  dplyr::select("NAME", "ADM0_A3", "UN_FID", "UN_LAT", "UN_LONG")
+
+#capital_filter_u <- capitals[capitals$ADM0_A3 %in% c("GTM", "SLV"),]
+capital_filter <- capitals[capitals$ADM0_A3 == "BOL", ]
+#Correct lat and long for the capital
+capital_filter$UN_LAT<-  -16.50
+capital_filter$UN_LONG<- -68.1333
+```
+
+#Natural breaks function 
+```{r}
+#Use for natural breaks variables
+breaks_fun <- function(var_in, breaks=7, dig=2){
+  # Classifiy the data based on natural breaks. Using Fisher (more efficient than Jenks)
+  fish_brk <- classIntervals(var_in, n=breaks, style="fisher")
+  fish_brk$brks <- round(fish_brk$brks, digits = dig)
+  # Use the breaks from above to decide the break points
+  var_in <- round(var_in, digits = dig)
+  var_out <- cut(var_in, breaks = c(fish_brk$brks), dig.lab = 7, include.lowest = TRUE, include.highest = TRUE)
+  return(var_out)
+}
+```
+
+#Mapping preparation
+```{r}
+#Establish theme for map
+theme_map <- function(...) {
+  theme_classic() +
+    theme(
+      text = element_text(color = "#22211d"),
+      axis.line = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5),
+      plot.caption = element_text(hjust = 0.5),
+      ...
+    )
+}
+```
+
+##Funcion to map
+Mapping function with country boundaries 
+
+```{r}
+#Assign directory for maps with country borders
+dir_fig_coutry_B <-  paste0(dir_fig, "Country_B/")                                          
+
+map_fun_test <- function(shape, index, TITLE, var_discrete=TRUE, break_type = "fisher", dir=dir_fig_coutry_B, breaks=BREAKS){
+  
+     if (break_type=="Lag_index") {
+    index$map_var_brk <- cut(index$map_var, 
+                             breaks = c(0, 20, 40, 60, 80, 100), 
+                             labels = LABELS, 
+                             include.lowest = TRUE)
+     } else if (break_type=="manual") {
+    index$map_var_brk <- cut(index$map_var, 
+                             breaks = BREAKS, 
+                             labels = LABELS, 
+                             include.lowest = TRUE)
+        } else {
+          if (length(unique(index$map_var))<=5) {
+            index$map_var_brk <- breaks_fun(index$map_var, breaks=4, dig=4)
+          } else {
+              index$map_var_brk <- breaks_fun(index$map_var, breaks=5, dig=4)
+            }
+        }
+
+  
+  names(COLOR) <- levels(index$map_var_brk)
+  
+  shape_fort <- fortify(shape, region="TARGET_FID") %>%                                      #Change varname
+  mutate(id=as.numeric(id))
+  
+  
+  colnames(index)[colnames(index)=="TARGET_FID"] <- "id"                                    #Change varname
+  index$id <- as.character(index$id)
+  shape_fort$id <- as.character(shape_fort$id)
+  map_data <- shape_fort %>% left_join(index, by= "id")
+  
+#Zoom in/out area
+  x_E <- max(shape_fort$long) +.02
+  x_W <- min(shape_fort$long) -.2
+  y_N <- max(shape_fort$lat)+ 0.2
+  y_S <- min(shape_fort$lat)- 0.2
+      
+  map <- ggplot() +   
+    geom_polygon(data= border_country, 
+                     aes(x=long, y = lat, group = group), fill = "gray60", alpha=0.5, 
+                 color="gray30", size= 0.1) +
+    geom_polygon(data = map_data, aes(fill = map_var_brk, 
+                                      x = long, 
+                                      y = lat, 
+                                      group = group), color = "black", size = 0.3) +
+    geom_point(data=capital_filter, aes(x=UN_LONG, 
+                                          y=UN_LAT), color="black", size= 1, pch = 16)+       #Adjust text position 
+    geom_text(data = capital_filter, aes(UN_LONG, UN_LAT, label = NAME), size = 3, hjust= .15 ,vjust=-.9,  
+              fontface=2)+
+    coord_map(
+      xlim = c(x_W, x_E), ylim = c(y_S, y_N)
+      ) +
+    theme_map() + 
+    labs(x = NULL, 
+         y = NULL, 
+         title = TITLE, 
+         subtitle = SOURCE, 
+         caption = NOTE) +
+    scale_fill_manual(name=LEGEND,
+                      values=COLOR, na.value="#CBCBCB",
+                      labels= LABELS,
+                     # drop = F,
+                      guide = guide_legend(
+                        keyheight = unit(5, units = "mm"),
+                        keywidth = unit(7, units = "mm"),
+                        title.position = 'top',
+                        reverse= F,
+                        title.hjust = 0.2,
+                        label.hjust = 0.5))
+
+
+  map
+  ggsave(paste(dir, paste0(TITLE, ".png"), sep = ""), height=6, width = 8, units = c("in"))
+}
+```
+
+#Mapping function with NO country boundaries
+```{r}
+#Assign directory for maps with country borders
+dir_fig_coutry_NB <-  paste0(dir_fig, "Country_NB/")            
+
+#Mapping function
+map_fun_test_nb <- function(shape, index, TITLE, var_discrete=TRUE, break_type = "fisher", dir=dir_fig_coutry_NB, breaks=BREAKS){
+  
+     if (break_type=="Lag_index") {
+    index$map_var_brk <- cut(index$map_var, 
+                             breaks = c(0, 20, 40, 60, 80, 100), 
+                             labels = LABELS, 
+                             include.lowest = TRUE)
+     } else if (break_type=="manual") {
+    index$map_var_brk <- cut(index$map_var, 
+                             breaks = BREAKS, 
+                             labels = LABELS, 
+                             include.lowest = TRUE)
+        } else {
+          if (length(unique(index$map_var))<=5) {
+            index$map_var_brk <- breaks_fun(index$map_var, breaks=4, dig=4)
+          } else {
+              index$map_var_brk <- breaks_fun(index$map_var, breaks=5, dig=4)
+            }
+        }
+
+  
+  names(COLOR) <- levels(index$map_var_brk)
+  
+  shape_fort <- fortify(shape, region="TARGET_FID") %>%                                      #Change varname
+  mutate(id=as.numeric(id))
+  
+  
+  colnames(index)[colnames(index)=="TARGET_FID"] <- "id"                                    #Change varname
+  index$id <- as.character(index$id)
+  shape_fort$id <- as.character(shape_fort$id)
+  map_data <- shape_fort %>% left_join(index, by= "id")
+  
+#Zoom in/out area
+  x_E <- max(shape_fort$long) +.02
+  x_W <- min(shape_fort$long) -.2
+  y_N <- max(shape_fort$lat)+ 0.2
+  y_S <- min(shape_fort$lat)- 0.2
+      
+  map <- ggplot() +   
+    geom_polygon(data = map_data, aes(fill = map_var_brk, 
+                                      x = long, 
+                                      y = lat, 
+                                      group = group), color = "black", size = 0.3) +
+    geom_point(data=capital_filter, aes(x=UN_LONG, 
+                                          y=UN_LAT), color="black", size= 1, pch = 16)+
+    geom_text(data = capital_filter, aes(UN_LONG, UN_LAT, label = NAME), size = 3, hjust= .15 ,vjust=-.9,
+              fontface=2)+
+    coord_map(
+      xlim = c(x_W, x_E), ylim = c(y_S, y_N)
+      ) +
+    theme_map() + 
+    labs(x = NULL, 
+         y = NULL, 
+         title = TITLE, 
+         subtitle = SOURCE, 
+         caption = NOTE) +
+    scale_fill_manual(name=LEGEND,
+                      values=COLOR, na.value="#CBCBCB",
+                      labels= LABELS,
+                     # drop = F,
+                      guide = guide_legend(
+                        keyheight = unit(5, units = "mm"),
+                        keywidth = unit(7, units = "mm"),
+                        title.position = 'top',
+                        reverse= F,
+                        title.hjust = 0.2,
+                        label.hjust = 0.5))
+
+
+  map
+  ggsave(paste(dir, paste0(TITLE, "NB.png"), sep = ""), height=6, width = 8, units = c("in"))
+}
+```
+
+#Premapping preparation 
+```{r}
+#Transform forest from km to proportion for better mapping
+index_all$forest_sh<-(index_all$forest_km*100)/index_all$area_sqkm2
+
+#Database for mapping should be named "indices"
+indices<-index_all
+```
+
+```{r}
+#Lagging regions
+
+LEGEND <- "Lagginess Index"
+SOURCE <- ""
+NOTE <- "Note: Lagging areas present low economic density, scarce market accessibility,\n and high poverty rates."
+LABELS <-c("0 to 20", "20 to 40", "40 to 60", "60 to 80", "80 to 100")
+indices$map_var <- indices$L_Index_den
+COLOR <- (brewer.pal(5,"YlGnBu"))
+map_fun_test(shape, index = indices, TITLE = "Lagginess Index ", break_type= "Lag_index")
+map_fun_test_nb(shape, index = indices, TITLE = "Lagginess Index ", break_type= "Lag_index")
+```
+
+```{r}
+#Forest coverage
+LEGEND <- "Forest Coverage"
+SOURCE <- ""
+NOTE <- "Note: Forest share per region."
+BREAKS<- c(0, 40, 60, 80, 100)
+LABELS <-c("< 40% ", "40% to 60%", "60% to 80%", "> 80%")
+indices$map_var <- indices$forest_sh
+COLOR <- brewer.pal(4,"Greens")
+map_fun_test(shape, index = indices, TITLE = "Forest Coverage"  , 
+             break_type= "manual"
+             )
+map_fun_test_nb(shape, index = indices, TITLE = "Forest Coverage", break_type= "manual" )
+
+#sort(indices$forest_sh)
+```
+
+```{r}
+LEGEND <- "Poverty Rate \n USD 5.5 per day"
+SOURCE <- "Source: HDD Dataset"
+NOTE <- "Note: Share of individuals below the 5.5 USD PPP Poverty Line."
+BREAKS <- c(0, .2, .3, .4, .5)
+LABELS <- c("< 20%","20% to 30%", "30% to 40%", "40% to 50%")
+indices$map_var <- indices$poor_ppp55 
+COLOR <- brewer.pal(5,"Reds")
+map_fun_test_nb(shape, index = indices, TITLE = "Poverty Rate " ,
+                break_type= "manual"
+                )
+map_fun_test(shape, index = indices, TITLE = "Poverty Rate ",break_type= "manual")
+
+#sort(indices$poor_ppp55) 
+```
+
+```{r}
+indices$Pop_dens<-format(round(indices$Pop_dens, 1), nsmall = 1)
+indices$Pop_dens<-as.numeric(as.character(indices$Pop_dens))
+LEGEND <- "Population Density \n   ppl/sqkm"
+SOURCE <- "Source: World Pop, 2015"
+NOTE <- "Note: Number of people per square kilometer"
+BREAKS <- c(0, 5, 10, 20, 30, 40)
+LABELS <-  c("<5", "5 to 10", "10 to 20", "20 to 30", "> 30")
+  #Use LABELS<- waiver() in case you want to use the natural breaks values 
+indices$map_var <- indices$Pop_dens
+COLOR <- brewer.pal(5,"RdPu")
+map_fun_test(shape, index = indices, TITLE = "Population Density",
+             break_type= "manual"
+             )
+map_fun_test_nb(shape, index = indices, TITLE = "Population Density", 
+                break_type= "manual"
+                )
+#sort(indices$Pop_dens)
+```
+
+```{r}
+LEGEND <- "Market Access"
+SOURCE <- "Source: World Bank"
+NOTE <- "Note: Proxy of market accessibility based on the travel time to \n nearest markets (main cities), weighted by population."
+LABELS <- c("Low", "","Medium",  "", "High")
+indices$map_var <- indices$Acc_median
+COLOR <- brewer.pal(5,"BuPu")
+map_fun_test(shape, index = indices, TITLE = "Market Access")
+map_fun_test_nb(shape, index = indices, TITLE = "Market Access")
+
+```
+
+```{r}
+#Per capita
+LEGEND <- "NTL per capita"
+SOURCE <- "Source: NASA VIIRS, 2016"
+NOTE <- "Note: Nighttime Lights (NTL) per capita. \n Total NTL value weighted by total population"
+LABELS <-c("Very Low", "Low", "Medium", "High", "Very High")
+indices$map_var <- indices$VIIRS_pc 
+COLOR <- brewer.pal(5,"Purples")
+map_fun_test(shape, index = indices, TITLE = "Economic Activity per capita")
+map_fun_test_nb(shape, index = indices, TITLE = "Economic Activity per capita")
+
+
+#Total nightlights
+LEGEND <- "Economic activity"
+SOURCE <- "Source: NASA VIIRS, 2016"
+NOTE <- "Note: Total Nighttime Lights (NTL). \n Higher level of NTL indicates higher economic activity"
+LABELS <-c("Very Low", "Low", "Medium", "High", "Very High")
+indices$map_var <- indices$VIIRS 
+COLOR <- brewer.pal(5,"Purples")
+map_fun_test(shape, index = indices, TITLE = "Economic Activity")
+map_fun_test_nb(shape, index = indices, TITLE = "Economic Activity")
+```
+
+#4.Clean data  and save it (shapefile/csv)
+```{r}
+
+index_all$TARGET_FID<-as.character(as.numeric(index_all$TARGET_FID))
+
+index_nd<-c("OBJECTID", "Join_Count", "NAME_0", "NAME_1", "HASC_1",  "HASC_1", "HASC_1", "TYPE_1", "ENGTYPE_1", "Area", "year_sur") 
+index_all_red<-index_all %>% 
+  dplyr::select(-index_nd)
+
+
+#Merge data with shapefile
+newobj <- merge(shape, index_all_red, by.x="TARGET_FID", by.y="TARGET_FID")
+
+
+#Change names to make them vissible in the shapefile (the number of characters  are limited in shapefile format)
+#colnames(newobj@data)
+
+colnames(newobj@data)[colnames(newobj@data)=="L_Index_den"] <- "Indx_den"
+colnames(newobj@data)[colnames(newobj@data)=="inv_Acc_median"] <- "inAccMed"
+colnames(newobj@data)[colnames(newobj@data)=="VIIRS_d_km"] <- "VIIRkm"
+colnames(newobj@data)[colnames(newobj@data)=="VIIRS_pc"] <- "VIIRpc"
+colnames(newobj@data)[colnames(newobj@data)=="inv_VIIRS_pc"] <- "inVIIRpc"
+colnames(newobj@data)[colnames(newobj@data)=="inv_VIIRS"] <- "inVIIR"
+colnames(newobj@data)[colnames(newobj@data)=="inv_Acc_median"] <- "inAccMd"
+
+#Save shapefile
+writeOGR(newobj, dsn = dir_out, layer = "BOL_Index", driver="ESRI Shapefile", overwrite_layer=TRUE)
+
+Index<-newobj@data
+
+#colnames(Index)
+#Save in csv
+write.csv(Index, paste(dir_out, "BOL_Index.csv", sep=""), row.names = FALSE)
+
+```

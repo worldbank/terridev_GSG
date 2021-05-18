@@ -1,0 +1,159 @@
+---
+title: "Biodiversity LATAM"
+author: "Evelyn Sanchez"
+date: "3/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/Users/eves/Dropbox/LATAM_WorldBank/")
+```
+
+#Load Libraries
+```{r}
+library(BAMMtools)
+library(classInt)
+library(data.table)
+library(doBy)
+library(dplyr)
+library(foreign)
+library(ggplot2)
+library(mapproj)
+library(maptools)
+library(raster)
+library(rgeos)
+library(RColorBrewer)
+library(rgdal)
+library(shapefiles)
+library(sp)
+library(stringr)
+library(tidyverse)
+library(viridis)
+library(viridisLite)
+library (BBmisc)
+```
+
+# Define directory path
+```{r}
+#Set working directories
+dir_raw <- "./Index/Raw/"                              #Confirm path
+dir_shp <- "./Boundaries/LATAM/"                       #Confirm path
+dir_bio <- "./Data/Biodiversity/Raw/"                  #Confirm path
+dir_out <- "./Data/Biodiversity/Output/LATAM/"         #Confirm path
+getwd()
+
+#Global raster name (Biodiverisity)
+rdata = paste(dir_bio, "all_totalcount.tif", sep = "")          #Change layer names
+#Shapefile name
+inshp="LATAM_Boundaries"                                        #Change layer names
+```
+
+```{r}
+## Read shape
+shp <- readOGR(dsn = dir_shp, layer=inshp)
+
+## Read and reproject raster
+myraster <- raster(rdata)
+crs(myraster) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+proj_ras <- proj4string(myraster)
+```
+#Crop raster
+```{r}
+#Verify that both shapefile and raster have the same projection
+country_shp <- spTransform(shp, proj_ras)
+shapes <- list(myraster, shp)
+shapes %>% lapply(crs) %>% unique()
+
+#Crop raster and mask it
+crop_raster <- crop(myraster, shp, filename= paste0(dir_out, "Biodiversity_LATAM.tif"), overwrite=TRUE)
+crop_raster_msk <-mask(crop_raster, shp) 
+```
+
+```{r}
+# HELPER FUNCION: Read Pixels 
+#Imput: raster and shapefile 
+#Output: data frame with the Total number of pixels, Frequency of pixels with value higher of 450 and Percentage 
+
+calc_prop_pixel <- function(raster, shp){
+  df = data.frame()
+  tot_df = data.frame()
+  for (i in 1:length(shp)){
+    print(paste('extracting polygon of region:',i))
+    raster.lst <- raster::extract(crop(raster,shp[i,]),shp[i,])
+    count_df <- raster.lst[1] %>% table() %>% 
+      as.data.frame() %>% 
+      mutate(Perc = round((Freq/sum(Freq)),6), Total = sum(Freq))
+    count_df <- cbind(count_df, OBJECTID=i) # Add object id
+    df = rbind(df, subset(count_df, select=-c(Total)))
+    tot_df = rbind(tot_df, unique(subset(count_df, select=c(OBJECTID, Total))))
+  }
+  colnames(df)[1] <- c('Num_Spec')
+  df$Num_Spec<-as.numeric(as.character(df$Num_Spec))
+    df <- df[df$Num_Spec >= 450, ]
+  
+  # Tidy up: Discard cat column, rename & retype columns 
+  df <- df[1:4]
+  df <- left_join(tot_df, df, by = 'OBJECTID')
+  df$OBJECTID <- as.character(df$OBJECTID)
+  
+  return(df)
+}
+```
+
+#Extract pixels with a value higher or equal than 450 species 
+```{r}
+bio_data <- calc_prop_pixel(crop_raster, shp)
+```
+#Calculate the percentage of pixel with a value of over 450 species per unit (district)
+```{r}
+bio_data_sum<-bio_data %>%
+  group_by(OBJECTID)%>%
+  summarise(total_pix=mean(Total), sum_bio_pix=sum(Freq), bio_perc=sum_bio_pix/total_pix)
+
+#Replace all NA as zero
+bio_data_sum[is.na(bio_data_sum)] <- 0
+```
+
+#Merge biodiversity data with districts names
+```{r}
+names<-shp@data
+names <- tibble::rowid_to_column(names, "id")
+names<-names%>%
+  dplyr::select("id","TARGET_FID", "NAME_0", "NAME_1", "TYPE_1", "Area")
+
+#Merge names 
+names$id <- as.numeric(as.character(names$id))
+bio_data_sum$OBJECTID <- as.numeric(as.character(bio_data_sum$OBJECTID))
+bio_data_sum<- left_join(names, bio_data_sum, by = c("id"= "OBJECTID"))
+
+#Calculate sqkm of biodiverity
+bio_data_sum$bio_area <- bio_data_sum$Area*bio_data_sum$bio_perc
+
+write.csv(dir_out, paste(dir_out, "Biodiveristy_share_LATAM.csv", sep=""), row.names = FALSE)
+
+bio_data_red<-bio_data_sum%>%
+  dplyr::select("TARGET_FID", "bio_perc", "bio_area")
+```
+
+# Read HDD data base
+```{r}
+# Load dataset
+data_base<- read.csv(paste0(dir_raw, "Index_base_2020.csv"),  header=TRUE)     #Confirm filename
+```
+
+#Joint with Index_base
+```{r}
+data_base$TARGET_FID<- as.numeric(as.character(data_base$TARGET_FID))
+bio_data_red$TARGET_FID<- as.numeric(as.character(bio_data_red$TARGET_FID))
+
+#Join
+data_base<-left_join(data_base, bio_data_red, by="TARGET_FID")
+
+write.csv(data_base, paste(dir_raw, "Index_base_032020.csv", sep=""), row.names = FALSE)
+saveRDS(data_base, file=paste(dir_raw, "Index_base_032020.Rda"))
+```
+
+
+
+
+
