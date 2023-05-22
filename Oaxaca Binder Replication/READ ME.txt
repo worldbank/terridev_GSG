@@ -7,12 +7,19 @@ All scripts require modification of cd pathnames to match the user's file system
 
 Cleaning/harmonizing SEDLAC for Oaxaca Blinder decomposition
 	Country do files, CEPAL deflators, MEX and BRA deflators, MEX muninames are in "Cleaning" folder (used when deflators are not in the survey)
-	Country data are organized by country and pulled from "SEDLAC" folder
+	Country data are pulled from datalibweb by country and saved into a new "SEDLAC" folder. For example, 
+	
+		dlw, coun(ARG) y(2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2015 2016 2017 2018 2019) t(SEDLAC-03) mod(ALL) sur(EPHC) per(S2)
+		save "$user/_OaxacaBlinder_replication/SEDLAC/ARG/ARG_SEDLACall.dta", replace
+	
+Country data are organized by country and pulled from "SEDLAC" folder
 
 First part of analysis looks at differential in labor income gaps per capita, based on adult head of household. 
 
 "Decomp eform head" runs the income decompositions comparing the leading region for subgroups (all, b40, urban, skilled, rural) for all surveys but ARG and URY.  
 "Decomp eform urban only head" runs the income decompositions by subgroups for ARG and URY (b40, urban, skilled, rural) as both countries only survey urban areas.
+"Decomp details" looks at the main explaining factors behind the gaps. 
+
 
 Second part looks at differential in individual labor income gaps among men and women.
 
